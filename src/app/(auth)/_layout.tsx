@@ -1,12 +1,21 @@
 import { Redirect, Stack } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
+import { View, ActivityIndicator } from 'react-native';
 
 export default function AuthLayout() {
     console.log('Auth layout');
-    const { isSignedIn } = useAuth();
+    const { isSignedIn, isLoaded } = useAuth();
+
+    if (!isLoaded) {
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB' }}>
+                <ActivityIndicator size="large" color="#16A34A" />
+            </View>
+        );
+    }
 
     if (isSignedIn) {
-        return <Redirect href={'HomeScreen'} />;
+        return <Redirect href={'/HomeScreen'} />;
     }
 
     return (

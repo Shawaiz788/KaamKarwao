@@ -1,199 +1,126 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Text,
   StyleSheet,
   View,
-  ScrollView,
   Pressable,
   StatusBar,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
-import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
 const { width } = Dimensions.get('window');
-
-type ServiceItem = {
-  name: string;
-  icon: React.ReactNode;
-  bgColor: string;
-};
 
 export default function WelcomeScreen() {
   const { isSignedIn } = useAuth();
   const router = useRouter();
+  const [selectedLang, setSelectedLang] = useState<'english' | 'urdu'>('english');
 
   const handleContinue = () => {
     if (isSignedIn) {
-      router.replace('/(protected)');
+      router.replace('/HomeScreen');
     } else {
       router.push('/sign-in');
     }
   };
 
-  const services: ServiceItem[] = [
-    {
-      name: 'Electrician',
-      icon: <MaterialCommunityIcons name="flash" size={24} color="#FF9800" />,
-      bgColor: '#FFF3E0',
-    },
-    {
-      name: 'Plumber',
-      icon: <FontAwesome5 name="wrench" size={24} color="#9C27B0" />,
-      bgColor: '#F3E5F5',
-    },
-    {
-      name: 'AC Service',
-      icon: <Ionicons name="snow" size={24} color="#2196F3" />,
-      bgColor: '#E3F2FD',
-    },
-    {
-      name: 'Tutor',
-      icon: <Ionicons name="book" size={24} color="#E91E63" />,
-      bgColor: '#FCE4EC',
-    },
-    {
-      name: 'Mehndi',
-      icon: <Ionicons name="leaf" size={24} color="#4CAF50" />,
-      bgColor: '#E8F5E9',
-    },
-    {
-      name: 'Cleaning',
-      icon: <Ionicons name="sparkles" size={24} color="#FFD700" />,
-      bgColor: '#FFFDE7',
-    },
-    {
-      name: 'Carpenter',
-      icon: <FontAwesome5 name="hammer" size={24} color="#795548" />,
-      bgColor: '#EFEBE9',
-    },
-    {
-      name: 'Painting',
-      icon: <FontAwesome5 name="paint-brush" size={24} color="#009688" />,
-      bgColor: '#E0F2F1',
-    },
-    {
-      name: '+ 15 More',
-      icon: <Ionicons name="grid-outline" size={24} color="#607D8B" />,
-      bgColor: '#ECEFF1',
-    },
-  ];
-
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#072212" />
+      <StatusBar barStyle="light-content" backgroundColor="#0B5A3E" />
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header Section */}
-        <View style={styles.headerContainer}>
-          {/* Overlapping circle decorations for abstract premium background */}
-          <View style={[styles.circleDeco, styles.circle1]} />
-          <View style={[styles.circleDeco, styles.circle2]} />
-
-          <View style={styles.headerTopRow}>
-            {/* Logo */}
-            <View style={styles.logoContainer}>
-              <View style={styles.logoIconBg}>
-                <Ionicons name="checkmark-sharp" size={22} color="#FFFFFF" />
-              </View>
-              <Text style={styles.logoText}>HAAN</Text>
+      <View style={styles.container}>
+        {/* Top/Center Branding Area */}
+        <View style={styles.brandWrapper}>
+          {/* Glassmorphic Hammer Icon Container */}
+          <View style={styles.logoBox}>
+            <View style={styles.rotatedContainer}>
+              <Text style={styles.hammerEmoji}>🔨</Text>
             </View>
+          </View>
 
-            {/* Language Selector */}
-            <Pressable style={styles.langSelector}>
-              <Ionicons name="globe-outline" size={16} color="#FFFFFF" />
-              <Text style={styles.langSelectorText}>اردو</Text>
+          {/* serif KaamKar brand name */}
+          <Text style={styles.brandName}>KaamKar</Text>
+
+          {/* Subtitle */}
+          <Text style={styles.brandSubtitle}>Find trusted local services</Text>
+        </View>
+
+        {/* Bottom Controls Area */}
+        <View style={styles.controlsWrapper}>
+          <Text style={styles.langLabel}>Choose your language</Text>
+
+          {/* Language Selector Row */}
+          <View style={styles.langRow}>
+            <Pressable
+              style={[
+                styles.langButton,
+                selectedLang === 'english' ? styles.langButtonActive : styles.langButtonInactive
+              ]}
+              onPress={() => setSelectedLang('english')}
+            >
+              <Text
+                style={[
+                  styles.langButtonText,
+                  selectedLang === 'english' ? styles.langButtonTextActive : styles.langButtonTextInactive
+                ]}
+              >
+                English
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={[
+                styles.langButton,
+                selectedLang === 'urdu' ? styles.langButtonActive : styles.langButtonInactive
+              ]}
+              onPress={() => setSelectedLang('urdu')}
+            >
+              <Text
+                style={[
+                  styles.langButtonText,
+                  selectedLang === 'urdu' ? styles.langButtonTextActive : styles.langButtonTextInactive
+                ]}
+              >
+                اردو
+              </Text>
             </Pressable>
           </View>
 
-          {/* Badge */}
-          <View style={styles.badgeContainer}>
-            <View style={styles.orangeBadge}>
-              <Text style={styles.orangeBadgeText}>Yes,It's Fixed!</Text>
+          {/* Primary CTA Button */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.primaryButton,
+              pressed && styles.primaryButtonPressed
+            ]}
+            onPress={handleContinue}
+          >
+            <View style={styles.primaryButtonContent}>
+              <Text style={styles.primaryButtonText}>Get Started</Text>
+              <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={styles.arrowIcon} />
+            </View>
+          </Pressable>
+
+          {/* Trust Indicators Footer */}
+          <View style={styles.trustFooter}>
+            <View style={styles.trustColumn}>
+              <Ionicons name="shield-checkmark-outline" size={20} color="#0B5A3E" />
+              <Text style={styles.trustText}>Verified</Text>
+            </View>
+
+            <View style={styles.trustColumn}>
+              <Ionicons name="people-outline" size={20} color="#0B5A3E" />
+              <Text style={styles.trustText}>Trusted</Text>
+            </View>
+
+            <View style={styles.trustColumn}>
+              <Ionicons name="wallet-outline" size={20} color="#0B5A3E" />
+              <Text style={styles.trustText}>Easy Pay</Text>
             </View>
           </View>
         </View>
-
-        {/* Trust Banner */}
-        <View style={styles.trustBanner}>
-          <View style={styles.trustItem}>
-            <Ionicons name="checkmark-circle-sharp" size={14} color="#FFFFFF" />
-            <Text style={styles.trustText}>CNIC Verified</Text>
-          </View>
-          <View style={styles.dividerDot} />
-
-          <View style={styles.trustItem}>
-            <Ionicons name="flash-sharp" size={13} color="#FFFFFF" />
-            <Text style={styles.trustText}>10-min Response</Text>
-          </View>
-          <View style={styles.dividerDot} />
-
-          <View style={styles.trustItem}>
-            <Ionicons name="star-sharp" size={13} color="#FFFFFF" />
-            <Text style={styles.trustText}>Avg 4.7★ Rating</Text>
-          </View>
-        </View>
-
-        {/* Content Body */}
-        <View style={styles.contentBody}>
-          {/* Services Title */}
-          <Text style={styles.sectionTitle}>Services We Fix</Text>
-
-          {/* Services Grid (3x3) */}
-          <View style={styles.gridContainer}>
-            {services.map((item, index) => (
-              <View key={index} style={styles.serviceCard}>
-                <View style={[styles.iconWrapper, { backgroundColor: item.bgColor }]}>
-                  {item.icon}
-                </View>
-                <Text style={styles.serviceName} numberOfLines={1} adjustsFontSizeToFit>
-                  {item.name}
-                </Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Stats Card */}
-          <View style={styles.statsCard}>
-            <View style={styles.statsRow}>
-              <View style={styles.statBox}>
-                <Text style={styles.statNumber}>3,200+</Text>
-                <Text style={styles.statLabel}>Verified Pros</Text>
-              </View>
-              <View style={styles.verticalDivider} />
-              <View style={styles.statBox}>
-                <Text style={styles.statNumber}>50,000+</Text>
-                <Text style={styles.statLabel}>Jobs Done</Text>
-              </View>
-            </View>
-
-          </View>
-        </View>
-      </ScrollView>
-
-      {/* Persistent Bottom Action Area */}
-      <View style={styles.bottomActionContainer}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.primaryButton,
-            pressed && styles.primaryButtonPressed
-          ]}
-          onPress={handleContinue}
-        >
-          <Text style={styles.primaryButtonText}>
-            {isSignedIn ? 'Go to Dashboard' : 'Get Started'}
-          </Text>
-          <Ionicons name="arrow-forward-sharp" size={20} color="#FFFFFF" />
-        </Pressable>
-        <Text style={styles.termsText}>
-          By continuing, you agree to our Terms of Service & Privacy Policy
-        </Text>
       </View>
     </SafeAreaView>
   );
@@ -202,256 +129,153 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#0B5A3E',
   },
-  scrollView: {
+  container: {
     flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 24,
-  },
-  headerContainer: {
-    backgroundColor: '#072212',
-    height: 170,
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  circleDeco: {
-    position: 'absolute',
-    borderRadius: 200,
-    backgroundColor: 'rgba(28, 163, 80, 0.08)',
-  },
-  circle1: {
-    width: 250,
-    height: 250,
-    top: -50,
-    right: -50,
-  },
-  circle2: {
-    width: 180,
-    height: 180,
-    bottom: -60,
-    left: -20,
-  },
-  headerTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    zIndex: 2,
-  },
-  logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  logoIconBg: {
-    backgroundColor: '#1CA350',
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-    shadowColor: '#1CA350',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  logoText: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
-  },
-  langSelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  langSelectorText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 6,
-  },
-  badgeContainer: {
-    marginTop: 28,
-    alignItems: 'flex-start',
-    zIndex: 2,
-  },
-  orangeBadge: {
-    backgroundColor: 'rgba(255, 122, 0, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 122, 0, 0.5)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  orangeBadgeText: {
-    color: '#FF9100',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  trustBanner: {
-    backgroundColor: '#16A34A',
-    flexDirection: 'row',
-    justifyContent: 'space-evenly',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-  },
-  trustItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  trustText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 5,
-  },
-  dividerDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-  },
-  contentBody: {
-    paddingHorizontal: 16,
-    paddingTop: 20,
-  },
-  sectionTitle: {
-    fontSize: 19,
-    fontWeight: '700',
-    color: '#1A1D20',
-    marginBottom: 16,
-  },
-  gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
-  serviceCard: {
-    width: '30%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
-    alignItems: 'center',
+  brandWrapper: {
+    flex: 1,
     justifyContent: 'center',
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#EFEFEF',
-    shadowColor: '#0A1C10',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    alignItems: 'center',
+    marginTop: 40,
+    paddingHorizontal: 24,
   },
-  iconWrapper: {
-    width: 48,
-    height: 48,
+  logoBox: {
+    width: 90,
+    height: 90,
     borderRadius: 24,
-    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     justifyContent: 'center',
-    marginBottom: 8,
-  },
-  serviceName: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#333333',
-    textAlign: 'center',
-  },
-  statsCard: {
-    backgroundColor: '#072212',
-    borderRadius: 20,
-    padding: 20,
-    marginTop: 12,
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 10,
     elevation: 4,
   },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
+  rotatedContainer: {
+    transform: [{ rotate: '-15deg' }],
   },
-  statBox: {
-    alignItems: 'center',
-    flex: 1,
+  hammerEmoji: {
+    fontSize: 38,
   },
-  statNumber: {
+  brandName: {
     color: '#FFFFFF',
-    fontSize: 26,
+    fontSize: 40,
     fontWeight: 'bold',
-  },
-  statLabel: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 13,
-    fontWeight: '600',
-    marginTop: 4,
-  },
-  verticalDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-  },
-  statsCardDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    marginVertical: 14,
-  },
-  tagline: {
-    color: '#1CA350',
-    fontSize: 15,
-    fontStyle: 'italic',
-    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    marginTop: 18,
     textAlign: 'center',
   },
-  bottomActionContainer: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 24,
-    borderTopWidth: 1,
-    borderTopColor: '#EEEEEE',
+  brandSubtitle: {
+    color: 'rgba(255, 255, 255, 0.75)',
+    fontSize: 16,
+    fontWeight: '500',
+    marginTop: 8,
+    textAlign: 'center',
   },
-  primaryButton: {
-    backgroundColor: '#16A34A',
+  controlsWrapper: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  langLabel: {
+    color: '#374151',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  langRow: {
     flexDirection: 'row',
-    height: 52,
-    borderRadius: 26,
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 20,
+  },
+  langButton: {
+    width: '48%',
+    height: 48,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#16A34A',
+    borderWidth: 1,
+  },
+  langButtonActive: {
+    backgroundColor: '#0B5A3E',
+    borderColor: '#0B5A3E',
+  },
+  langButtonInactive: {
+    backgroundColor: '#F3F4F6',
+    borderColor: '#E5E7EB',
+  },
+  langButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  langButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  langButtonTextInactive: {
+    color: '#374151',
+  },
+  primaryButton: {
+    backgroundColor: '#D97706',
+    width: '100%',
+    height: 52,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#D97706',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 3,
   },
   primaryButtonPressed: {
     opacity: 0.9,
-    transform: [{ scale: 0.98 }],
+    transform: [{ scale: 0.99 }],
+  },
+  primaryButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
-    marginRight: 8,
+    marginRight: 6,
   },
-  termsText: {
-    textAlign: 'center',
-    color: '#888888',
-    fontSize: 11,
-    marginTop: 12,
+  arrowIcon: {
+    marginTop: 1,
+  },
+  trustFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    marginTop: 32,
+    width: '100%',
+  },
+  trustColumn: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  trustText: {
+    color: '#4B5563',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 6,
   },
 });

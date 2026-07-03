@@ -27,11 +27,11 @@ export default function CustomInput<T extends FieldValues>({
       render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => (
         <View style={[styles.container, containerStyle]}>
           {label && <Text style={styles.label}>{label}</Text>}
-          
-          <View 
+
+          <View
             style={[
               styles.inputWrapper,
-              { 
+              {
                 borderColor: error ? '#EF4444' : isFocused ? '#16A34A' : '#E5E7EB',
                 backgroundColor: isFocused ? '#FFFFFF' : '#F3F4F6'
               }
@@ -54,22 +54,22 @@ export default function CustomInput<T extends FieldValues>({
               style={styles.input}
               placeholderTextColor="#9CA3AF"
             />
-            
+
             {props.secureTextEntry && (
-              <Pressable 
-                onPress={() => setIsSecured(!isSecured)} 
+              <Pressable
+                onPress={() => setIsSecured(!isSecured)}
                 style={styles.eyeIcon}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Ionicons 
-                  name={isSecured ? "eye-outline" : "eye-off-outline"} 
-                  size={20} 
-                  color="#9CA3AF" 
+                <Ionicons
+                  name={isSecured ? "eye-outline" : "eye-off-outline"}
+                  size={20}
+                  color="#9CA3AF"
                 />
               </Pressable>
             )}
           </View>
-          
+
           {error ? (
             <Text style={styles.error}>{error.message}</Text>
           ) : (
