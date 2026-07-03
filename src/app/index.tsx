@@ -9,18 +9,18 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuth } from '@clerk/clerk-expo';
+import { useAuth } from '../provider/auth'; // Updated import
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 const { width } = Dimensions.get('window');
 
 export default function WelcomeScreen() {
-  const { isSignedIn } = useAuth();
+  const { user } = useAuth(); // Updated hook
   const router = useRouter();
   const [selectedLang, setSelectedLang] = useState<'english' | 'urdu'>('english');
 
   const handleContinue = () => {
-    if (isSignedIn) {
+    if (user) { // Check user presence
       router.replace('/HomeScreen');
     } else {
       router.push('/sign-in');
@@ -34,17 +34,12 @@ export default function WelcomeScreen() {
       <View style={styles.container}>
         {/* Top/Center Branding Area */}
         <View style={styles.brandWrapper}>
-          {/* Glassmorphic Hammer Icon Container */}
           <View style={styles.logoBox}>
             <View style={styles.rotatedContainer}>
               <Text style={styles.hammerEmoji}>🔨</Text>
             </View>
           </View>
-
-          {/* serif KaamKar brand name */}
           <Text style={styles.brandName}>KaamKar</Text>
-
-          {/* Subtitle */}
           <Text style={styles.brandSubtitle}>Find trusted local services</Text>
         </View>
 
@@ -52,7 +47,6 @@ export default function WelcomeScreen() {
         <View style={styles.controlsWrapper}>
           <Text style={styles.langLabel}>Choose your language</Text>
 
-          {/* Language Selector Row */}
           <View style={styles.langRow}>
             <Pressable
               style={[
@@ -89,7 +83,6 @@ export default function WelcomeScreen() {
             </Pressable>
           </View>
 
-          {/* Primary CTA Button */}
           <Pressable
             style={({ pressed }) => [
               styles.primaryButton,
@@ -103,18 +96,15 @@ export default function WelcomeScreen() {
             </View>
           </Pressable>
 
-          {/* Trust Indicators Footer */}
           <View style={styles.trustFooter}>
             <View style={styles.trustColumn}>
               <Ionicons name="shield-checkmark-outline" size={20} color="#0B5A3E" />
               <Text style={styles.trustText}>Verified</Text>
             </View>
-
             <View style={styles.trustColumn}>
               <Ionicons name="people-outline" size={20} color="#0B5A3E" />
               <Text style={styles.trustText}>Trusted</Text>
             </View>
-
             <View style={styles.trustColumn}>
               <Ionicons name="wallet-outline" size={20} color="#0B5A3E" />
               <Text style={styles.trustText}>Easy Pay</Text>

@@ -14,7 +14,7 @@ import { Link, useRouter } from 'expo-router';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { isClerkAPIResponseError, useSignIn } from '@clerk/clerk-expo';
+import { getAuth, signInWithEmailAndPassword } from '@react-native-firebase/auth'; // Updated import
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -26,17 +26,6 @@ const signInSchema = z.object({
 });
 
 type SignInFields = z.infer<typeof signInSchema>;
-
-const mapClerkErrorToFormField = (error: any) => {
-    switch (error.meta?.paramName) {
-        case 'identifier':
-            return 'email';
-        case 'password':
-            return 'password';
-        default:
-            return 'root';
-    }
-};
 
 export default function SignInScreen() {
     const {
@@ -52,36 +41,26 @@ export default function SignInScreen() {
         },
     });
 
-    const { signIn, isLoaded, setActive } = useSignIn();
     const router = useRouter();
 
     const onSignIn = async (data: SignInFields) => {
-        if (!isLoaded) return;
-
         try {
-            const signInAttempt = await signIn.create({
-                identifier: data.email,
-                password: data.password,
-            });
+            // Updated to use React Native Firebase Auth modular method
+            const auth = getAuth();
+            await signInWithEmailAndPassword(auth, data.email, data.password);
+            router.replace('/HomeScreen');
+        } catch (err: any) {
+            console.log('Sign in error: ', err);
 
-            if (signInAttempt.status === 'complete') {
-                setActive({ session: signInAttempt.createdSessionId });
+            // Map Firebase Error Codes to form fields
+            if (err.code === 'auth/invalid-email' || err.code === 'auth/user-not-found') {
+                setError('email', { message: 'Invalid email address or user not found' });
+            } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+                setError('password', { message: 'Incorrect password or credentials' });
+            } else if (err.code === 'auth/user-disabled') {
+                setError('root', { message: 'This user account has been disabled' });
             } else {
-                console.log('Sign in failed');
-                setError('root', { message: 'Sign in could not be completed' });
-            }
-        } catch (err) {
-            console.log('Sign in error: ', JSON.stringify(err, null, 2));
-
-            if (isClerkAPIResponseError(err)) {
-                err.errors.forEach((error) => {
-                    const fieldName = mapClerkErrorToFormField(error) as keyof SignInFields | 'root';
-                    setError(fieldName, {
-                        message: error.longMessage,
-                    });
-                });
-            } else {
-                setError('root', { message: 'Unknown error' });
+                setError('root', { message: err.message || 'An error occurred during sign in' });
             }
         }
     };
@@ -104,7 +83,6 @@ export default function SignInScreen() {
                         <View style={[styles.circleDeco, styles.circle2]} />
 
                         <View style={styles.headerTopRow}>
-                            {/* Logo */}
                             <View style={styles.logoContainer}>
                                 <View style={styles.logoIconBg}>
                                     <Ionicons name="checkmark-sharp" size={20} color="#FFFFFF" />
@@ -112,7 +90,6 @@ export default function SignInScreen() {
                                 <Text style={styles.logoText}>HAAN</Text>
                             </View>
 
-                            {/* Language Selector */}
                             <Pressable style={styles.langSelector}>
                                 <Ionicons name="globe-outline" size={14} color="#FFFFFF" />
                                 <Text style={styles.langSelectorText}>اردو</Text>
@@ -150,7 +127,6 @@ export default function SignInScreen() {
                                 <Text style={styles.rootErrorText}>{errors.root.message}</Text>
                             )}
 
-                            {/* Sign In Button */}
                             <Pressable
                                 style={({ pressed }) => [
                                     styles.primaryButton,
@@ -161,19 +137,16 @@ export default function SignInScreen() {
                                 <Text style={styles.primaryButtonText}>Sign In</Text>
                             </Pressable>
 
-                            {/* Forgot Password Link */}
                             <Pressable style={styles.forgotPasswordButton}>
                                 <Text style={styles.forgotPasswordText}>Forgot password?</Text>
                             </Pressable>
 
-                            {/* "or" Divider */}
                             <View style={styles.dividerRow}>
                                 <View style={styles.dividerLine} />
                                 <Text style={styles.dividerText}>or</Text>
                                 <View style={styles.dividerLine} />
                             </View>
 
-                            {/* Redirect to Sign Up */}
                             <View style={styles.redirectContainer}>
                                 <Text style={styles.redirectText}>Don't have an account? </Text>
                                 <Link href="/sign-up" asChild>
@@ -182,8 +155,6 @@ export default function SignInScreen() {
                                     </Pressable>
                                 </Link>
                             </View>
-
-
                         </View>
                     </View>
                 </ScrollView>
@@ -219,83 +190,83 @@ const styles = StyleSheet.create({
     circle1: {
         width: 200,
         height: 200,
-        top: -40,
-        right: -40,
+        top: -100,
+        right: -50,
     },
     circle2: {
-        width: 140,
-        height: 140,
-        bottom: -60,
-        left: -20,
+        width: 150,
+        height: 150,
+        bottom: -80,
+        left: -30,
     },
     headerTopRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        zIndex: 2,
-        marginBottom: 24,
     },
     logoContainer: {
         flexDirection: 'row',
         alignItems: 'center',
+        gap: 8,
     },
     logoIconBg: {
-        backgroundColor: '#1CA350',
-        width: 30,
-        height: 30,
+        width: 32,
+        height: 32,
         borderRadius: 8,
+        backgroundColor: '#16A34A',
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 8,
     },
     logoText: {
-        color: '#FFFFFF',
         fontSize: 20,
         fontWeight: 'bold',
+        color: '#FFFFFF',
+        letterSpacing: 0.5,
     },
     langSelector: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.12)',
+        gap: 4,
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
         paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 16,
+        paddingVertical: 5,
+        borderRadius: 20,
     },
     langSelectorText: {
         color: '#FFFFFF',
         fontSize: 12,
         fontWeight: '600',
-        marginLeft: 5,
     },
     headerTitleContainer: {
-        zIndex: 2,
+        marginTop: 24,
     },
     headerTitle: {
-        fontSize: 26,
-        fontWeight: '800',
+        fontSize: 28,
+        fontWeight: 'bold',
         color: '#FFFFFF',
-        marginBottom: 6,
     },
     headerSubtitle: {
         fontSize: 14,
-        color: '#9CA3AF',
-        fontWeight: '500',
+        color: 'rgba(255, 255, 255, 0.7)',
+        marginTop: 4,
     },
     formContainer: {
         flex: 1,
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        marginTop: -16,
         paddingHorizontal: 20,
-        paddingTop: 24,
-        paddingBottom: 32,
+        paddingTop: 32,
     },
     form: {
-        width: '100%',
+        gap: 20,
     },
     rootErrorText: {
-        color: '#EF4444',
-        fontSize: 13,
-        fontWeight: '600',
+        color: '#DC2626',
+        fontSize: 14,
         textAlign: 'center',
-        marginBottom: 12,
+        fontWeight: '600',
     },
     primaryButton: {
         backgroundColor: '#D97706',
@@ -303,16 +274,15 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 12,
+        marginTop: 10,
         shadowColor: '#D97706',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
+        shadowOpacity: 0.2,
         shadowRadius: 6,
-        elevation: 3,
+        elevation: 2,
     },
     primaryButtonPressed: {
         opacity: 0.9,
-        transform: [{ scale: 0.99 }],
     },
     primaryButtonText: {
         color: '#FFFFFF',
@@ -320,19 +290,18 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
     forgotPasswordButton: {
-        alignItems: 'center',
-        marginTop: 16,
-        marginBottom: 16,
+        alignSelf: 'center',
+        paddingVertical: 4,
     },
     forgotPasswordText: {
-        color: '#16A34A',
+        color: '#0B5A3E',
         fontSize: 14,
         fontWeight: '600',
     },
     dividerRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginVertical: 12,
+        marginVertical: 10,
     },
     dividerLine: {
         flex: 1,
@@ -340,44 +309,23 @@ const styles = StyleSheet.create({
         backgroundColor: '#E5E7EB',
     },
     dividerText: {
+        marginHorizontal: 12,
         color: '#9CA3AF',
         fontSize: 14,
-        marginHorizontal: 12,
-        fontWeight: '500',
     },
     redirectContainer: {
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 12,
-        marginBottom: 24,
+        paddingBottom: 20,
     },
     redirectText: {
         color: '#6B7280',
         fontSize: 14,
-        fontWeight: '500',
     },
     redirectLinkText: {
-        color: '#16A34A',
+        color: '#0B5A3E',
+        fontWeight: '700',
         fontSize: 14,
-        fontWeight: '700',
-    },
-    demoCard: {
-        backgroundColor: '#EDF3FF',
-        borderWidth: 1,
-        borderColor: '#C6D8FF',
-        borderRadius: 12,
-        paddingVertical: 14,
-        paddingHorizontal: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    demoText: {
-        color: '#2A5DF2',
-        fontSize: 13,
-        fontWeight: '500',
-    },
-    demoBold: {
-        fontWeight: '700',
     },
 });

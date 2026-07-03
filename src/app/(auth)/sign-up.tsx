@@ -13,12 +13,11 @@ import CustomInput from '@/components/CustomInput';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, router } from 'expo-router';
-import { isClerkAPIResponseError, useSignUp } from '@clerk/clerk-expo';
+import { Link, useRouter } from 'expo-router'; // Updated import to useRouter
+import auth from '@react-native-firebase/auth'; // Updated import
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// Form validation schema including confirmPassword check
 const signUpSchema = z
   .object({
     email: z.string({ message: 'Email is required' }).email('Invalid email address'),
@@ -33,17 +32,6 @@ const signUpSchema = z
   });
 
 type SignUpFields = z.infer<typeof signUpSchema>;
-
-const mapClerkErrorToFormField = (error: any) => {
-  switch (error.meta?.paramName) {
-    case 'email_address':
-      return 'email';
-    case 'password':
-      return 'password';
-    default:
-      return 'root';
-  }
-};
 
 export default function SignUpScreen() {
   const {
@@ -60,32 +48,27 @@ export default function SignUpScreen() {
     },
   });
 
-  const { signUp, isLoaded } = useSignUp();
+  const router = useRouter();
 
   const onSignUp = async (data: SignUpFields) => {
-    if (!isLoaded) return;
-
     try {
-      await signUp.create({
-        emailAddress: data.email,
-        password: data.password,
-      });
+      // Create user using Firebase Auth
+      await auth().createUserWithEmailAndPassword(data.email, data.password);
 
-      await signUp.prepareVerification({ strategy: 'email_code' });
-
-      router.push('/verify');
-    } catch (err) {
+      // Redirect directly to profile setup
+      router.replace('/profile-setup');
+    } catch (err: any) {
       console.log('Sign up error: ', err);
-      if (isClerkAPIResponseError(err)) {
-        err.errors.forEach((error) => {
-          console.log('Error: ', JSON.stringify(error, null, 2));
-          const fieldName = mapClerkErrorToFormField(error) as keyof SignUpFields | 'root';
-          setError(fieldName, {
-            message: error.longMessage,
-          });
-        });
+
+      // Map Firebase error codes
+      if (err.code === 'auth/email-already-in-use') {
+        setError('email', { message: 'That email address is already in use' });
+      } else if (err.code === 'auth/invalid-email') {
+        setError('email', { message: 'Invalid email address' });
+      } else if (err.code === 'auth/weak-password') {
+        setError('password', { message: 'Password is too weak' });
       } else {
-        setError('root', { message: 'Unknown error' });
+        setError('root', { message: err.message || 'An error occurred during sign up' });
       }
     }
   };
@@ -108,7 +91,6 @@ export default function SignUpScreen() {
             <View style={[styles.circleDeco, styles.circle2]} />
 
             <View style={styles.headerTopRow}>
-              {/* Logo */}
               <View style={styles.logoContainer}>
                 <View style={styles.logoIconBg}>
                   <Ionicons name="checkmark-sharp" size={20} color="#FFFFFF" />
@@ -116,7 +98,6 @@ export default function SignUpScreen() {
                 <Text style={styles.logoText}>HAAN</Text>
               </View>
 
-              {/* Language Selector */}
               <Pressable style={styles.langSelector}>
                 <Ionicons name="globe-outline" size={14} color="#FFFFFF" />
                 <Text style={styles.langSelectorText}>اردو</Text>
@@ -142,21 +123,18 @@ export default function SignUpScreen() {
                 autoComplete="email"
               />
 
-              <View style={styles.passwordFieldContainer}>
-                <CustomInput
-                  control={control}
-                  name="password"
-                  label="Password"
-                  placeholder="••••••••"
-                  secureTextEntry
-                />
-                <Text style={styles.passwordHint}>At least 8 characters</Text>
-              </View>
+              <CustomInput
+                control={control}
+                name="password"
+                label="Password"
+                placeholder="••••••••"
+                secureTextEntry
+              />
 
               <CustomInput
                 control={control}
                 name="confirmPassword"
-                label="Confirm password"
+                label="Confirm Password"
                 placeholder="••••••••"
                 secureTextEntry
               />
@@ -165,7 +143,6 @@ export default function SignUpScreen() {
                 <Text style={styles.rootErrorText}>{errors.root.message}</Text>
               )}
 
-              {/* Continue Button */}
               <Pressable
                 style={({ pressed }) => [
                   styles.primaryButton,
@@ -173,10 +150,15 @@ export default function SignUpScreen() {
                 ]}
                 onPress={handleSubmit(onSignUp)}
               >
-                <Text style={styles.primaryButtonText}>Continue →</Text>
+                <Text style={styles.primaryButtonText}>Sign Up</Text>
               </Pressable>
 
-              {/* Redirect to Sign In */}
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
               <View style={styles.redirectContainer}>
                 <Text style={styles.redirectText}>Already have an account? </Text>
                 <Link href="/sign-in" asChild>
@@ -185,13 +167,6 @@ export default function SignUpScreen() {
                   </Pressable>
                 </Link>
               </View>
-
-              {/* Footer Terms */}
-              <Text style={styles.termsText}>
-                By creating an account, you agree to HAAN's{' '}
-                <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
-                <Text style={styles.termsLink}>Privacy Policy</Text>
-              </Text>
             </View>
           </View>
         </ScrollView>
@@ -227,93 +202,83 @@ const styles = StyleSheet.create({
   circle1: {
     width: 200,
     height: 200,
-    top: -40,
-    right: -40,
+    top: -100,
+    right: -50,
   },
   circle2: {
-    width: 140,
-    height: 140,
-    bottom: -60,
-    left: -20,
+    width: 150,
+    height: 150,
+    bottom: -80,
+    left: -30,
   },
   headerTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    zIndex: 2,
-    marginBottom: 24,
   },
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   logoIconBg: {
-    backgroundColor: '#1CA350',
-    width: 30,
-    height: 30,
+    width: 32,
+    height: 32,
     borderRadius: 8,
+    backgroundColor: '#16A34A',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
   },
   logoText: {
-    color: '#FFFFFF',
     fontSize: 20,
     fontWeight: 'bold',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   langSelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    gap: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 16,
+    paddingVertical: 5,
+    borderRadius: 20,
   },
   langSelectorText: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
-    marginLeft: 5,
   },
   headerTitleContainer: {
-    zIndex: 2,
+    marginTop: 24,
   },
   headerTitle: {
-    fontSize: 26,
-    fontWeight: '800',
+    fontSize: 28,
+    fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 6,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#9CA3AF',
-    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginTop: 4,
   },
   formContainer: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    marginTop: -16,
     paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 32,
+    paddingTop: 32,
   },
   form: {
-    width: '100%',
-  },
-  passwordFieldContainer: {
-    marginBottom: 8,
-  },
-  passwordHint: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: -4,
-    marginBottom: 8,
-    fontWeight: '500',
+    gap: 20,
   },
   rootErrorText: {
-    color: '#EF4444',
-    fontSize: 13,
-    fontWeight: '600',
+    color: '#DC2626',
+    fontSize: 14,
     textAlign: 'center',
-    marginBottom: 12,
+    fontWeight: '600',
   },
   primaryButton: {
     backgroundColor: '#D97706',
@@ -321,48 +286,49 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 12,
+    marginTop: 10,
     shadowColor: '#D97706',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.2,
     shadowRadius: 6,
-    elevation: 3,
+    elevation: 2,
   },
   primaryButtonPressed: {
     opacity: 0.9,
-    transform: [{ scale: 0.99 }],
   },
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
   },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    color: '#9CA3AF',
+    fontSize: 14,
+  },
   redirectContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 20,
+    paddingBottom: 20,
   },
   redirectText: {
     color: '#6B7280',
     fontSize: 14,
-    fontWeight: '500',
   },
   redirectLinkText: {
-    color: '#16A34A',
-    fontSize: 14,
+    color: '#0B5A3E',
     fontWeight: '700',
-  },
-  termsText: {
-    textAlign: 'center',
-    color: '#9CA3AF',
-    fontSize: 12,
-    lineHeight: 18,
-    paddingHorizontal: 10,
-  },
-  termsLink: {
-    color: '#6B7280',
-    fontWeight: '500',
+    fontSize: 14,
   },
 });

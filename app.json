@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Auth",
-    "scheme": "auth",
-    "slug": "Auth",
+    "name": "KaamKrwao",
+    "scheme": "kaamkrwao",
+    "slug": "kaam-krwao",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,7 +14,9 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.shawaiz788.kaamkrwao",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +25,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.shawaiz788.Auth"
+      "package": "com.shawaiz788.kaamkrwao",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -32,7 +35,10 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
+      "expo-font"
     ]
   }
 }

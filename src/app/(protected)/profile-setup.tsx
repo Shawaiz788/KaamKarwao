@@ -12,7 +12,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useUser } from '@clerk/clerk-expo';
+import { useAuth } from '../../provider/auth'; // Updated import
+import { updateProfile } from '@react-native-firebase/auth';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -20,7 +21,7 @@ type City = 'Lahore' | 'Karachi' | 'Islamabad' | 'Rawalpindi';
 type Role = 'client' | 'provider';
 
 export default function ProfileSetupScreen() {
-  const { user, isLoaded } = useUser();
+  const { user } = useAuth(); // Updated hook usage
   const router = useRouter();
 
   // Component States
@@ -32,7 +33,7 @@ export default function ProfileSetupScreen() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleGoToHAAN = async () => {
-    if (!isLoaded || !user) return;
+    if (!user) return;
 
     // Form Validation
     if (!fullName.trim()) {
@@ -55,25 +56,21 @@ export default function ProfileSetupScreen() {
     setIsLoading(true);
 
     try {
-      // Split full name into firstName and lastName
-      const nameParts = fullName.trim().split(/\s+/);
-      const firstName = nameParts[0];
-      const lastName = nameParts.slice(1).join(' ') || ' ';
+      // Update Firebase User Profile Display Name
+      await updateProfile(user, {
+        displayName: fullName.trim(),
+      });
 
-      // Update Clerk User profile and unsafeMetadata
-      await user.update({
-        firstName,
-        lastName,
-        unsafeMetadata: {
-          phone: `+92${sanitizedPhone}`,
-          city,
-          role,
-          profileComplete: true,
-        },
+      console.log('Saved locally / logged profile parameters:', {
+        uid: user.uid,
+        email: user.email,
+        fullName: fullName.trim(),
+        phone: `+92${sanitizedPhone}`,
+        city,
+        role,
       });
 
       console.log('Profile setup saved successfully!');
-      // Route replacement will trigger re-evaluation of protected layout and load HomeScreen
       router.replace('/HomeScreen');
     } catch (err: any) {
       console.log('Error saving profile setup: ', err);
@@ -98,171 +95,177 @@ export default function ProfileSetupScreen() {
         >
           {/* Header Section */}
           <View style={styles.headerContainer}>
-            <View style={[styles.circleDeco, styles.circle1]} />
-            <View style={[styles.circleDeco, styles.circle2]} />
-
-            {/* Urdu Language Selector */}
-            <Pressable style={styles.langSelector}>
-              <Ionicons name="globe-outline" size={14} color="#FFFFFF" />
-              <Text style={styles.langSelectorText}>اردو</Text>
-            </Pressable>
-
-            {/* Avatar Placeholder */}
-            <View style={styles.avatarContainer}>
-              <Ionicons name="person" size={28} color="#FFFFFF" />
-            </View>
-
-            <Text style={styles.headerTitle}>Set up your profile</Text>
+            <Text style={styles.headerTitle}>Complete Profile</Text>
             <Text style={styles.headerSubtitle}>Tell us a bit about yourself to get started</Text>
-
-            {/* Progress Step Indicator */}
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBarContainer}>
-                <View style={styles.progressBarActive} />
-                <View style={styles.progressBarActive} />
-                <View style={styles.progressBarActive} />
-              </View>
-              <Text style={styles.progressText}>Step 3 of 3 — Almost done!</Text>
-            </View>
           </View>
 
-          {/* Form Body Container */}
+          {/* Form Fields */}
           <View style={styles.formContainer}>
-            {/* Full Name Input */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Full name</Text>
-              <TextInput
-                style={styles.textInput}
-                value={fullName}
-                onChangeText={(text) => {
-                  setFullName(text);
-                  if (errorMsg) setErrorMsg(null);
-                }}
-                placeholder="Ahmad Ali"
-                placeholderTextColor="#9CA3AF"
-                autoCapitalize="words"
-              />
-            </View>
-
-            {/* Phone Number Input */}
-            <View style={styles.inputGroup}>
-              <View style={styles.phoneLabelRow}>
-                <Text style={styles.inputLabel}>Phone number (required)</Text>
-                <View style={styles.requiredBadge}>
-                  <Text style={styles.requiredBadgeText}>Required</Text>
-                </View>
-              </View>
-
-              <View style={styles.phoneInputContainer}>
-                <View style={styles.countryCodeBadge}>
-                  <Text style={styles.countryCodeText}>PK +92</Text>
-                </View>
-                <TextInput
-                  style={styles.phoneTextInput}
-                  value={phone}
-                  onChangeText={(text) => {
-                    const numeric = text.replace(/[^0-9]/g, '');
-                    setPhone(numeric);
-                    if (errorMsg) setErrorMsg(null);
-                  }}
-                  placeholder="3XX-XXXXXXX"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="phone-pad"
-                  maxLength={10}
-                />
-              </View>
-              <Text style={styles.phoneHint}>
-                +92 {phone ? phone : '3XX-XXXXXXX'}
-              </Text>
-            </View>
-
-            {/* City Selection Pills */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Your city</Text>
-              <View style={styles.cityPillGrid}>
-                {(['Lahore', 'Karachi', 'Islamabad', 'Rawalpindi'] as City[]).map((c) => {
-                  const isSelected = city === c;
-                  return (
-                    <Pressable
-                      key={c}
-                      style={[
-                        styles.cityPill,
-                        isSelected && styles.cityPillSelected
-                      ]}
-                      onPress={() => setCity(c)}
-                    >
-                      <Text
-                        style={[
-                          styles.cityPillText,
-                          isSelected && styles.cityPillTextSelected
-                        ]}
-                      >
-                        {c}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* Role Radio Card Buttons */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>I want to...</Text>
-
-              {/* Find & Hire Services Card */}
-              <Pressable
-                style={[
-                  styles.roleCard,
-                  role === 'client' && styles.roleCardSelected
-                ]}
-                onPress={() => setRole('client')}
-              >
-                <View style={styles.roleCardContent}>
-                  <Text style={styles.roleIcon}>🏠</Text>
-                  <Text style={styles.roleCardText}>Find & hire services</Text>
-                </View>
-                {role === 'client' && (
-                  <Ionicons name="checkmark-sharp" size={20} color="#16A34A" />
-                )}
-              </Pressable>
-
-              {/* Provide Services & Earn Card */}
-              <Pressable
-                style={[
-                  styles.roleCard,
-                  role === 'provider' && styles.roleCardSelected
-                ]}
-                onPress={() => setRole('provider')}
-              >
-                <View style={styles.roleCardContent}>
-                  <Text style={styles.roleIcon}>🔨</Text>
-                  <Text style={styles.roleCardText}>Provide services & earn</Text>
-                </View>
-                {role === 'provider' && (
-                  <Ionicons name="checkmark-sharp" size={20} color="#16A34A" />
-                )}
-              </Pressable>
-            </View>
-
-            {/* Error Message */}
             {errorMsg && (
-              <Text style={styles.errorText}>{errorMsg}</Text>
+              <View style={styles.errorContainer}>
+                <Ionicons name="alert-circle" size={16} color="#DC2626" />
+                <Text style={styles.errorText}>{errorMsg}</Text>
+              </View>
             )}
 
-            {/* Submit Button */}
+            {/* Full Name Input */}
+            <View style={styles.inputWrapper}>
+              <Text style={styles.label}>Full Name</Text>
+              <View style={styles.inputFieldContainer}>
+                <Ionicons name="person-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="John Doe"
+                  placeholderTextColor="#9CA3AF"
+                  value={fullName}
+                  onChangeText={(val) => {
+                    setFullName(val);
+                    if (errorMsg) setErrorMsg(null);
+                  }}
+                />
+              </View>
+            </View>
+
+            {/* Phone Input */}
+            <View style={styles.inputWrapper}>
+              <Text style={styles.label}>Phone Number</Text>
+              <View style={styles.inputFieldContainer}>
+                <Text style={styles.countryCode}>+92</Text>
+                <TextInput
+                  style={styles.phoneInput}
+                  placeholder="3001234567"
+                  placeholderTextColor="#9CA3AF"
+                  keyboardType="numeric"
+                  value={phone}
+                  onChangeText={(val) => {
+                    setPhone(val);
+                    if (errorMsg) setErrorMsg(null);
+                  }}
+                />
+              </View>
+            </View>
+
+            {/* City Selector */}
+            <View style={styles.inputWrapper}>
+              <Text style={styles.label}>Select your City</Text>
+              <View style={styles.gridContainer}>
+                {(['Lahore', 'Karachi', 'Islamabad', 'Rawalpindi'] as City[]).map((cityName) => (
+                  <Pressable
+                    key={cityName}
+                    style={[
+                      styles.gridCard,
+                      city === cityName ? styles.gridCardActive : styles.gridCardInactive,
+                    ]}
+                    onPress={() => setCity(cityName)}
+                  >
+                    <Ionicons
+                      name="location-outline"
+                      size={20}
+                      color={city === cityName ? '#FFFFFF' : '#4B5563'}
+                    />
+                    <Text
+                      style={[
+                        styles.gridCardText,
+                        city === cityName ? styles.gridCardTextActive : styles.gridCardTextInactive,
+                      ]}
+                    >
+                      {cityName}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            {/* Role Selection */}
+            <View style={styles.inputWrapper}>
+              <Text style={styles.label}>Register as</Text>
+              <View style={styles.roleContainer}>
+                <Pressable
+                  style={[
+                    styles.roleCard,
+                    role === 'client' ? styles.roleCardActive : styles.roleCardInactive,
+                  ]}
+                  onPress={() => setRole('client')}
+                >
+                  <View style={styles.roleTextContainer}>
+                    <Text
+                      style={[
+                        styles.roleTitle,
+                        role === 'client' ? styles.roleTitleActive : styles.roleTitleInactive,
+                      ]}
+                    >
+                      Client
+                    </Text>
+                    <Text
+                      style={[
+                        styles.roleDesc,
+                        role === 'client' ? styles.roleDescActive : styles.roleDescInactive,
+                      ]}
+                    >
+                      I want to find trusted local services for my work.
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.radioCircle,
+                      role === 'client' ? styles.radioCircleActive : styles.radioCircleInactive,
+                    ]}
+                  >
+                    {role === 'client' && <View style={styles.radioDot} />}
+                  </View>
+                </Pressable>
+
+                <Pressable
+                  style={[
+                    styles.roleCard,
+                    role === 'provider' ? styles.roleCardActive : styles.roleCardInactive,
+                  ]}
+                  onPress={() => setRole('provider')}
+                >
+                  <View style={styles.roleTextContainer}>
+                    <Text
+                      style={[
+                        styles.roleTitle,
+                        role === 'provider' ? styles.roleTitleActive : styles.roleTitleInactive,
+                      ]}
+                    >
+                      Service Provider
+                    </Text>
+                    <Text
+                      style={[
+                        styles.roleDesc,
+                        role === 'provider' ? styles.roleDescActive : styles.roleDescInactive,
+                      ]}
+                    >
+                      I want to provide my services and get hired by clients.
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.radioCircle,
+                      role === 'provider' ? styles.radioCircleActive : styles.radioCircleInactive,
+                    ]}
+                  >
+                    {role === 'provider' && <View style={styles.radioDot} />}
+                  </View>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Save Button */}
             <Pressable
               style={({ pressed }) => [
-                styles.primaryButton,
-                pressed && styles.primaryButtonPressed,
-                isLoading && styles.primaryButtonDisabled
+                styles.saveButton,
+                pressed && styles.saveButtonPressed,
+                isLoading && styles.saveButtonDisabled,
               ]}
               onPress={handleGoToHAAN}
               disabled={isLoading}
             >
               {isLoading ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
+                <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={styles.primaryButtonText}>Go to HAAN 🥳</Text>
+                <Text style={styles.saveButtonText}>Finish & Continue</Text>
               )}
             </Pressable>
           </View>
@@ -275,7 +278,7 @@ export default function ProfileSetupScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#072212',
   },
   keyboardAvoid: {
     flex: 1,
@@ -284,258 +287,212 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   headerContainer: {
-    backgroundColor: '#072212',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 24,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  circleDeco: {
-    position: 'absolute',
-    borderRadius: 200,
-    backgroundColor: 'rgba(28, 163, 80, 0.08)',
-  },
-  circle1: {
-    width: 200,
-    height: 200,
-    top: -40,
-    right: -40,
-  },
-  circle2: {
-    width: 140,
-    height: 140,
-    bottom: -60,
-    left: -20,
-  },
-  langSelector: {
-    position: 'absolute',
-    right: 20,
-    top: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 16,
-    zIndex: 2,
-  },
-  langSelectorText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 5,
-  },
-  avatarContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    zIndex: 2,
+    paddingHorizontal: 24,
+    paddingTop: 36,
+    paddingBottom: 28,
   },
   headerTitle: {
-    fontSize: 26,
-    fontWeight: '800',
+    fontSize: 28,
+    fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 6,
-    zIndex: 2,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#9CA3AF',
-    fontWeight: '500',
-    marginBottom: 20,
-    zIndex: 2,
-  },
-  progressContainer: {
-    zIndex: 2,
-  },
-  progressBarContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginBottom: 8,
-  },
-  progressBarActive: {
-    width: '32%',
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#FFFFFF',
-  },
-  progressText: {
-    color: '#9CA3AF',
-    fontSize: 12,
-    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginTop: 6,
   },
   formContainer: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 32,
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  textInput: {
-    backgroundColor: '#F3F4F6',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    height: 48,
-    paddingHorizontal: 14,
-    fontSize: 15,
-    color: '#1F2937',
-  },
-  phoneLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  requiredBadge: {
-    backgroundColor: '#FFF0EB',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    marginLeft: 8,
-  },
-  requiredBadgeText: {
-    color: '#FF6633',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  phoneInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  countryCodeBadge: {
-    backgroundColor: '#F3F4F6',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    height: 48,
-    paddingHorizontal: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  countryCodeText: {
-    color: '#374151',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  phoneTextInput: {
-    flex: 1,
-    backgroundColor: '#F3F4F6',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    height: 48,
-    paddingHorizontal: 14,
-    fontSize: 15,
-    color: '#1F2937',
-  },
-  phoneHint: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginTop: 6,
-    fontWeight: '500',
-  },
-  cityPillGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -4,
-  },
-  cityPill: {
     backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: 40,
+    gap: 24,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    margin: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cityPillSelected: {
-    backgroundColor: '#16A34A',
-    borderColor: '#16A34A',
-  },
-  cityPillText: {
-    color: '#374151',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  cityPillTextSelected: {
-    color: '#FFFFFF',
-  },
-  roleCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
+    borderColor: '#FCA5A5',
+    padding: 12,
     borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    marginBottom: 10,
-  },
-  roleCardSelected: {
-    backgroundColor: '#F0FDF4',
-    borderColor: '#16A34A',
-  },
-  roleCardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  roleIcon: {
-    fontSize: 20,
-    marginRight: 10,
-  },
-  roleCardText: {
-    color: '#374151',
-    fontSize: 15,
-    fontWeight: '600',
+    gap: 8,
   },
   errorText: {
-    color: '#EF4444',
-    fontSize: 13,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 14,
+    color: '#DC2626',
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
   },
-  primaryButton: {
-    backgroundColor: '#16A34A',
+  inputWrapper: {
+    gap: 8,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  inputFieldContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 14,
+    height: 52,
+    paddingHorizontal: 16,
+    backgroundColor: '#F9FAFB',
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  textInput: {
+    flex: 1,
+    height: '100%',
+    color: '#111827',
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  countryCode: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#374151',
+    marginRight: 10,
+    borderRightWidth: 1,
+    borderRightColor: '#D1D5DB',
+    paddingRight: 10,
+  },
+  phoneInput: {
+    flex: 1,
+    height: '100%',
+    color: '#111827',
+    fontSize: 15,
+    fontWeight: '500',
+    letterSpacing: 1,
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  gridCard: {
+    width: '48%',
     height: 50,
-    borderRadius: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  gridCardActive: {
+    backgroundColor: '#0B5A3E',
+    borderColor: '#0B5A3E',
+  },
+  gridCardInactive: {
+    backgroundColor: '#F9FAFB',
+    borderColor: '#E5E7EB',
+  },
+  gridCardText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  gridCardTextActive: {
+    color: '#FFFFFF',
+  },
+  gridCardTextInactive: {
+    color: '#4B5563',
+  },
+  roleContainer: {
+    gap: 16,
+  },
+  roleCard: {
+    borderWidth: 1.5,
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  roleCardActive: {
+    borderColor: '#0B5A3E',
+    backgroundColor: 'rgba(11, 90, 62, 0.04)',
+  },
+  roleCardInactive: {
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+  },
+  roleTextContainer: {
+    flex: 1,
+    gap: 4,
+  },
+  roleTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  roleTitleActive: {
+    color: '#0B5A3E',
+  },
+  roleTitleInactive: {
+    color: '#374151',
+  },
+  roleDesc: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  roleDescActive: {
+    color: '#0B5A3E',
+    opacity: 0.8,
+  },
+  roleDescInactive: {
+    color: '#6B7280',
+  },
+  radioCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 8,
-    shadowColor: '#16A34A',
+  },
+  radioCircleActive: {
+    borderColor: '#0B5A3E',
+  },
+  radioCircleInactive: {
+    borderColor: '#9CA3AF',
+  },
+  radioDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#0B5A3E',
+  },
+  saveButton: {
+    backgroundColor: '#D97706',
+    height: 52,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 16,
+    shadowColor: '#D97706',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
-    shadowRadius: 6,
+    shadowRadius: 8,
     elevation: 3,
   },
-  primaryButtonDisabled: {
-    backgroundColor: '#A7F3D0',
-  },
-  primaryButtonPressed: {
+  saveButtonPressed: {
     opacity: 0.9,
     transform: [{ scale: 0.99 }],
   },
-  primaryButtonText: {
+  saveButtonDisabled: {
+    backgroundColor: '#F3F4F6',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  saveButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',

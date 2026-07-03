@@ -1,14 +1,11 @@
-import { Slot, Redirect, useSegments } from 'expo-router';
-import { useAuth, useUser } from '@clerk/clerk-expo';
+import { Slot, Redirect } from 'expo-router';
+import { useAuth } from '../../provider/auth';
 import { View, ActivityIndicator } from 'react-native';
 
 export default function ProtectedLayout() {
-    console.log('Protected layout');
-    const { isSignedIn, isLoaded: isAuthLoaded } = useAuth();
-    const { user, isLoaded: isUserLoaded } = useUser();
-    const segments = useSegments();
+    const { user, initializing } = useAuth();
 
-    if (!isAuthLoaded || !isUserLoaded) {
+    if (initializing) {
         return (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB' }}>
                 <ActivityIndicator size="large" color="#16A34A" />
@@ -16,15 +13,12 @@ export default function ProtectedLayout() {
         );
     }
 
-    if (!isSignedIn) {
+    if (!user) {
         return <Redirect href='/' />;
     }
 
-    const isProfileSetupScreen = segments.includes('profile-setup');
-
-    if (!user?.unsafeMetadata?.profileComplete && !isProfileSetupScreen) {
-        return <Redirect href='/profile-setup' />;
-    }
+    // Replace user?.unsafeMetadata check with your database-fetched metadata
+    // for profile setup (see Step 5)
 
     return <Slot />;
 }

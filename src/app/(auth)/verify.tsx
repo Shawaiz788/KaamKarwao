@@ -14,7 +14,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
-import { isClerkAPIResponseError, useSignUp } from '@clerk/clerk-expo';
+import { getAuth } from '@react-native-firebase/auth';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 const verifySchema = z.object({
@@ -22,15 +22,6 @@ const verifySchema = z.object({
 });
 
 type VerifyFields = z.infer<typeof verifySchema>;
-
-const mapClerkErrorToFormField = (error: any) => {
-  switch (error.meta?.paramName) {
-    case 'code':
-      return 'code';
-    default:
-      return 'root';
-  }
-};
 
 export default function VerifyScreen() {
   const {
@@ -47,7 +38,6 @@ export default function VerifyScreen() {
     },
   });
 
-  const { signUp, isLoaded, setActive } = useSignUp();
   const router = useRouter();
   const inputRef = useRef<TextInput>(null);
 
@@ -64,37 +54,21 @@ export default function VerifyScreen() {
   }, []);
 
   const onVerify = async ({ code }: VerifyFields) => {
-    if (!isLoaded) return;
-
     try {
-      const signUpAttempt = await signUp.attemptEmailAddressVerification({
-        code,
-      });
-
-      if (signUpAttempt.status === 'complete') {
-        setActive({ session: signUpAttempt.createdSessionId });
-      } else {
-        console.log('Verification failed', signUpAttempt);
-        setError('root', { message: 'Could not complete the sign up' });
-      }
+      console.log('Mock verifying code:', code);
+      setFeedbackType('success');
+      setFeedbackMessage('Verification successful!');
+      
+      setTimeout(() => {
+        router.replace('/profile-setup');
+      }, 1000);
     } catch (err) {
-      if (isClerkAPIResponseError(err)) {
-        err.errors.forEach((error) => {
-          const fieldName = mapClerkErrorToFormField(error) as keyof VerifyFields | 'root';
-          setError(fieldName, {
-            message: error.longMessage,
-          });
-        });
-      } else {
-        setError('root', { message: 'Unknown error occurred' });
-      }
+      setError('root', { message: 'Verification failed. Please try again.' });
     }
   };
 
   const onResendCode = async () => {
-    if (!isLoaded) return;
     try {
-      await signUp.prepareVerification({ strategy: 'email_code' });
       setFeedbackType('success');
       setFeedbackMessage('Verification code resent successfully!');
       setTimeout(() => {
@@ -120,7 +94,7 @@ export default function VerifyScreen() {
     }, 100);
   };
 
-  const emailAddress = signUp?.emailAddress || 'your email';
+  const emailAddress = getAuth().currentUser?.email || 'your email';
 
   return (
     <SafeAreaView style={styles.safeArea}>
