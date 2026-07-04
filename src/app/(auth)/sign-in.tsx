@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
     StyleSheet,
     Text,
@@ -8,21 +8,22 @@ import {
     ScrollView,
     Pressable,
     StatusBar,
+    TextInput,
+    ActivityIndicator,
 } from 'react-native';
 import CustomInput from '@/components/CustomInput';
 import { Link, useRouter } from 'expo-router';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { getAuth, signInWithEmailAndPassword } from '@react-native-firebase/auth'; // Updated import
+import auth from '@react-native-firebase/auth';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const signInSchema = z.object({
-    email: z.string({ message: 'Email is required' }).email('Invalid email address'),
-    password: z
-        .string({ message: 'Password is required' })
-        .min(8, 'Password should be at least 8 characters long'),
+    phone: z
+        .string({ message: 'Phone number is required' })
+        .regex(/^[0-9]{10}$/, 'Phone number must be exactly 10 digits (e.g. 3001234567)'),
 });
 
 type SignInFields = z.infer<typeof signInSchema>;
@@ -36,32 +37,35 @@ export default function SignInScreen() {
     } = useForm<SignInFields>({
         resolver: zodResolver(signInSchema),
         defaultValues: {
-            email: '',
-            password: '',
+            phone: '',
         },
     });
 
     const router = useRouter();
 
+    const [isLoading, setIsLoading] = useState(false);
+
     const onSignIn = async (data: SignInFields) => {
+        setIsLoading(true);
         try {
-            // Updated to use React Native Firebase Auth modular method
-            const auth = getAuth();
-            await signInWithEmailAndPassword(auth, data.email, data.password);
-            router.replace('/HomeScreen');
+            const formattedPhone = `+92${data.phone}`;
+            const confirmation = await auth().signInWithPhoneNumber(formattedPhone);
+            router.replace({
+                pathname: '/verify',
+                params: {
+                    phoneNumber: formattedPhone,
+                    verificationId: confirmation.verificationId,
+                },
+            });
         } catch (err: any) {
             console.log('Sign in error: ', err);
-
-            // Map Firebase Error Codes to form fields
-            if (err.code === 'auth/invalid-email' || err.code === 'auth/user-not-found') {
-                setError('email', { message: 'Invalid email address or user not found' });
-            } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-                setError('password', { message: 'Incorrect password or credentials' });
-            } else if (err.code === 'auth/user-disabled') {
-                setError('root', { message: 'This user account has been disabled' });
+            if (err.code === 'auth/invalid-phone-number') {
+                setError('phone', { message: 'Invalid phone number format' });
             } else {
-                setError('root', { message: err.message || 'An error occurred during sign in' });
+                setError('root', { message: err.message || 'An error occurred sending OTP' });
             }
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -75,6 +79,7 @@ export default function SignInScreen() {
             >
                 <ScrollView
                     contentContainerStyle={styles.scrollContent}
+                    keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                 >
                     {/* Header Area */}
@@ -97,31 +102,49 @@ export default function SignInScreen() {
                         </View>
 
                         <View style={styles.headerTitleContainer}>
-                            <Text style={styles.headerTitle}>Sign In</Text>
-                            <Text style={styles.headerSubtitle}>Welcome back</Text>
+                            <Text style={styles.headerTitle}>Sign In / Sign Up</Text>
+                            <Text style={styles.headerSubtitle}>Enter your phone number to continue</Text>
                         </View>
                     </View>
 
                     {/* Form Content Area */}
                     <View style={styles.formContainer}>
                         <View style={styles.form}>
-                            <CustomInput
-                                control={control}
-                                name="email"
-                                label="Email"
-                                placeholder="you@example.com"
-                                autoCapitalize="none"
-                                keyboardType="email-address"
-                                autoComplete="email"
-                            />
-
-                            <CustomInput
-                                control={control}
-                                name="password"
-                                label="Password"
-                                placeholder="••••••••"
-                                secureTextEntry
-                            />
+                            <View style={styles.inputWrapper}>
+                                <Text style={styles.label}>Phone Number</Text>
+                                <Controller
+                                    control={control}
+                                    name="phone"
+                                    render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => (
+                                        <View style={styles.inputContainer}>
+                                            <View
+                                                style={[
+                                                    styles.inputFieldContainer,
+                                                    {
+                                                        borderColor: error ? '#EF4444' : '#E5E7EB',
+                                                        backgroundColor: '#F9FAFB'
+                                                    }
+                                                ]}
+                                            >
+                                                <Text style={styles.countryCode}>+92</Text>
+                                                <TextInput
+                                                    style={styles.phoneInput}
+                                                    placeholder="3001234567"
+                                                    placeholderTextColor="#9CA3AF"
+                                                    keyboardType="numeric"
+                                                    value={value}
+                                                    onChangeText={(text) => {
+                                                        const clean = text.replace(/[^0-9]/g, '').slice(0, 10);
+                                                        onChange(clean);
+                                                    }}
+                                                    onBlur={onBlur}
+                                                />
+                                            </View>
+                                            {error && <Text style={styles.errorText}>{error.message}</Text>}
+                                        </View>
+                                    )}
+                                />
+                            </View>
 
                             {errors.root && (
                                 <Text style={styles.rootErrorText}>{errors.root.message}</Text>
@@ -130,31 +153,18 @@ export default function SignInScreen() {
                             <Pressable
                                 style={({ pressed }) => [
                                     styles.primaryButton,
-                                    pressed && styles.primaryButtonPressed
+                                    (pressed || isLoading) && styles.primaryButtonPressed,
+                                    isLoading && styles.primaryButtonDisabled
                                 ]}
                                 onPress={handleSubmit(onSignIn)}
+                                disabled={isLoading}
                             >
-                                <Text style={styles.primaryButtonText}>Sign In</Text>
+                                {isLoading ? (
+                                    <ActivityIndicator size="small" color="#FFFFFF" />
+                                ) : (
+                                    <Text style={styles.primaryButtonText}>Send Verification Code</Text>
+                                )}
                             </Pressable>
-
-                            <Pressable style={styles.forgotPasswordButton}>
-                                <Text style={styles.forgotPasswordText}>Forgot password?</Text>
-                            </Pressable>
-
-                            <View style={styles.dividerRow}>
-                                <View style={styles.dividerLine} />
-                                <Text style={styles.dividerText}>or</Text>
-                                <View style={styles.dividerLine} />
-                            </View>
-
-                            <View style={styles.redirectContainer}>
-                                <Text style={styles.redirectText}>Don't have an account? </Text>
-                                <Link href="/sign-up" asChild>
-                                    <Pressable>
-                                        <Text style={styles.redirectLinkText}>Create Account</Text>
-                                    </Pressable>
-                                </Link>
-                            </View>
                         </View>
                     </View>
                 </ScrollView>
@@ -284,6 +294,11 @@ const styles = StyleSheet.create({
     primaryButtonPressed: {
         opacity: 0.9,
     },
+    primaryButtonDisabled: {
+        backgroundColor: '#FCD34D',
+        shadowOpacity: 0,
+        elevation: 0,
+    },
     primaryButtonText: {
         color: '#FFFFFF',
         fontSize: 16,
@@ -327,5 +342,52 @@ const styles = StyleSheet.create({
         color: '#0B5A3E',
         fontWeight: '700',
         fontSize: 14,
+    },
+    inputWrapper: {
+        gap: 8,
+        width: '100%',
+    },
+    label: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#374151',
+        marginBottom: 6,
+    },
+    inputContainer: {
+        width: '100%',
+        marginBottom: 8,
+    },
+    inputFieldContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1.5,
+        borderColor: '#E5E7EB',
+        borderRadius: 14,
+        height: 52,
+        paddingHorizontal: 16,
+        backgroundColor: '#F9FAFB',
+    },
+    countryCode: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#374151',
+        marginRight: 10,
+        borderRightWidth: 1,
+        borderRightColor: '#D1D5DB',
+        paddingRight: 10,
+    },
+    phoneInput: {
+        flex: 1,
+        height: '100%',
+        color: '#111827',
+        fontSize: 15,
+        fontWeight: '500',
+        letterSpacing: 1,
+    },
+    errorText: {
+        color: '#EF4444',
+        fontSize: 12,
+        marginTop: 4,
+        fontWeight: '500',
     },
 });

@@ -4,11 +4,13 @@ import { getAuth, onAuthStateChanged, User } from '@react-native-firebase/auth';
 interface AuthContextType {
     user: User | null;
     initializing: boolean;
+    reloadUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
     user: null,
     initializing: true,
+    reloadUser: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -25,8 +27,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return subscriber; // unsubscribe on unmount
     }, [initializing]);
 
+    const reloadUser = async () => {
+        const auth = getAuth();
+        if (auth.currentUser) {
+            await auth.currentUser.reload();
+            setUser(auth.currentUser);
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, initializing }}>
+        <AuthContext.Provider value={{ user, initializing, reloadUser }}>
             {children}
         </AuthContext.Provider>
     );

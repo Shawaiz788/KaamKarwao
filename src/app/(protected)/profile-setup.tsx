@@ -21,12 +21,12 @@ type City = 'Lahore' | 'Karachi' | 'Islamabad' | 'Rawalpindi';
 type Role = 'client' | 'provider';
 
 export default function ProfileSetupScreen() {
-  const { user } = useAuth(); // Updated hook usage
+  const { user, reloadUser } = useAuth(); // Updated hook usage
   const router = useRouter();
 
   // Component States
   const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [city, setCity] = useState<City>('Lahore');
   const [role, setRole] = useState<Role>('client');
   const [isLoading, setIsLoading] = useState(false);
@@ -41,14 +41,14 @@ export default function ProfileSetupScreen() {
       return;
     }
 
-    const sanitizedPhone = phone.replace(/[^0-9]/g, '');
-    if (!sanitizedPhone) {
-      setErrorMsg('Phone number is required');
+    if (!email.trim()) {
+      setErrorMsg('Email address is required');
       return;
     }
 
-    if (sanitizedPhone.length < 9 || sanitizedPhone.length > 10) {
-      setErrorMsg('Please enter a valid phone number (e.g., 3001234567)');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setErrorMsg('Please enter a valid email address (e.g., you@example.com)');
       return;
     }
 
@@ -61,11 +61,14 @@ export default function ProfileSetupScreen() {
         displayName: fullName.trim(),
       });
 
+      // Reload user in context to update state
+      await reloadUser();
+
       console.log('Saved locally / logged profile parameters:', {
         uid: user.uid,
-        email: user.email,
+        email: email.trim(),
         fullName: fullName.trim(),
-        phone: `+92${sanitizedPhone}`,
+        phone: user.phoneNumber,
         city,
         role,
       });
@@ -126,19 +129,20 @@ export default function ProfileSetupScreen() {
               </View>
             </View>
 
-            {/* Phone Input */}
+            {/* Email Input */}
             <View style={styles.inputWrapper}>
-              <Text style={styles.label}>Phone Number</Text>
+              <Text style={styles.label}>Email Address</Text>
               <View style={styles.inputFieldContainer}>
-                <Text style={styles.countryCode}>+92</Text>
+                <Ionicons name="mail-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
                 <TextInput
-                  style={styles.phoneInput}
-                  placeholder="3001234567"
+                  style={styles.textInput}
+                  placeholder="you@example.com"
                   placeholderTextColor="#9CA3AF"
-                  keyboardType="numeric"
-                  value={phone}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  value={email}
                   onChangeText={(val) => {
-                    setPhone(val);
+                    setEmail(val);
                     if (errorMsg) setErrorMsg(null);
                   }}
                 />

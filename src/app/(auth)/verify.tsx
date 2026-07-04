@@ -9,12 +9,13 @@ import {
   Pressable,
   TextInput,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'expo-router';
-import { getAuth } from '@react-native-firebase/auth';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import auth from '@react-native-firebase/auth';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 const verifySchema = z.object({
@@ -39,8 +40,23 @@ export default function VerifyScreen() {
   });
 
   const router = useRouter();
-  const inputRef = useRef<TextInput>(null);
+  const params = useLocalSearchParams<{
+    phoneNumber?: string;
+    verificationId?: string;
+  }>();
 
+  const phoneNumber = params.phoneNumber || '';
+  const verificationId = params.verificationId || '';
+
+  const [activeVerificationId, setActiveVerificationId] = useState(verificationId);
+
+  useEffect(() => {
+    if (verificationId) {
+      setActiveVerificationId(verificationId);
+    }
+  }, [verificationId]);
+
+  const inputRef = useRef<TextInput>(null);
   const codeValue = watch('code');
 
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
@@ -53,32 +69,67 @@ export default function VerifyScreen() {
     }, 150);
   }, []);
 
+  const [isLoading, setIsLoading] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
+
   const onVerify = async ({ code }: VerifyFields) => {
+    setIsLoading(true);
     try {
-      console.log('Mock verifying code:', code);
+      setFeedbackType(null);
+      setFeedbackMessage(null);
+
+      if (!activeVerificationId) {
+        throw new Error('Verification session expired. Please request a new code.');
+      }
+
+      const credential = auth.PhoneAuthProvider.credential(activeVerificationId, code);
+      const userCredential = await auth().signInWithCredential(credential);
+
       setFeedbackType('success');
       setFeedbackMessage('Verification successful!');
+      setIsVerified(true);
       
-      setTimeout(() => {
+      const isNewUser = userCredential.additionalUserInfo?.isNewUser;
+      const isProfileIncomplete = !userCredential.user.displayName;
+
+      if (isNewUser || isProfileIncomplete) {
         router.replace('/profile-setup');
-      }, 1000);
-    } catch (err) {
-      setError('root', { message: 'Verification failed. Please try again.' });
+      } else {
+        router.replace('/HomeScreen');
+      }
+    } catch (err: any) {
+      console.log('Verification error: ', err);
+      setError('root', { message: err.message || 'Verification failed. Please try again.' });
+      setIsLoading(false);
+      setIsVerified(false);
     }
   };
 
   const onResendCode = async () => {
     try {
+      setFeedbackType(null);
+      setFeedbackMessage(null);
+
+      if (!phoneNumber) {
+        throw new Error('Phone number is missing.');
+      }
+
+      const confirmation = await auth().signInWithPhoneNumber(phoneNumber);
+      if (!confirmation.verificationId) {
+        throw new Error('Failed to get verification ID from server.');
+      }
+      setActiveVerificationId(confirmation.verificationId);
+
       setFeedbackType('success');
       setFeedbackMessage('Verification code resent successfully!');
       setTimeout(() => {
         setFeedbackMessage(null);
         setFeedbackType(null);
       }, 4000);
-    } catch (err) {
+    } catch (err: any) {
       console.log('Resend error: ', err);
       setFeedbackType('error');
-      setFeedbackMessage('Failed to resend verification code');
+      setFeedbackMessage(err.message || 'Failed to resend verification code');
       setTimeout(() => {
         setFeedbackMessage(null);
         setFeedbackType(null);
@@ -94,7 +145,13 @@ export default function VerifyScreen() {
     }, 100);
   };
 
-  const emailAddress = getAuth().currentUser?.email || 'your email';
+  if (isVerified) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#072212' }}>
+        <ActivityIndicator size="large" color="#FFFFFF" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -129,16 +186,16 @@ export default function VerifyScreen() {
               <Text style={styles.langSelectorText}>اردو</Text>
             </Pressable>
 
-            {/* Envelope Icon Box */}
+            {/* Phone Icon Box */}
             <View style={styles.envelopeIconBox}>
-              <Ionicons name="mail" size={26} color="#FFFFFF" />
+              <Ionicons name="phone-portrait-outline" size={26} color="#FFFFFF" />
             </View>
 
             <View style={styles.headerTitleContainer}>
-              <Text style={styles.headerTitle}>Verify your email</Text>
+              <Text style={styles.headerTitle}>Verify your phone</Text>
               <Text style={styles.headerSubtitle}>
                 We sent a 6-digit code to{' '}
-                <Text style={styles.emailBold}>{emailAddress}</Text>
+                <Text style={styles.emailBold}>{phoneNumber}</Text>
               </Text>
             </View>
           </View>
@@ -203,13 +260,17 @@ export default function VerifyScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.primaryButton,
-                codeValue?.length !== 6 && styles.primaryButtonDisabled,
+                (codeValue?.length !== 6 || isLoading) && styles.primaryButtonDisabled,
                 pressed && styles.primaryButtonPressed
               ]}
               onPress={handleSubmit(onVerify)}
-              disabled={codeValue?.length !== 6}
+              disabled={codeValue?.length !== 6 || isLoading}
             >
-              <Text style={styles.primaryButtonText}>Verify & Continue</Text>
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.primaryButtonText}>Verify & Continue</Text>
+              )}
             </Pressable>
 
             {/* Resend Code Button */}

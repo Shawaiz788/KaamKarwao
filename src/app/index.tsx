@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Text,
   StyleSheet,
@@ -7,6 +7,7 @@ import {
   StatusBar,
   Dimensions,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../provider/auth'; // Updated import
@@ -19,13 +20,37 @@ export default function WelcomeScreen() {
   const router = useRouter();
   const [selectedLang, setSelectedLang] = useState<'english' | 'urdu'>('english');
 
+  useEffect(() => {
+    if (user) {
+      const isProfileIncomplete = !user.displayName;
+      if (isProfileIncomplete) {
+        router.replace('/profile-setup');
+      } else {
+        router.replace('/HomeScreen');
+      }
+    }
+  }, [user]);
+
   const handleContinue = () => {
     if (user) { // Check user presence
-      router.replace('/HomeScreen');
+      const isProfileIncomplete = !user.displayName;
+      if (isProfileIncomplete) {
+        router.replace('/profile-setup');
+      } else {
+        router.replace('/HomeScreen');
+      }
     } else {
       router.push('/sign-in');
     }
   };
+
+  if (user) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0B5A3E' }}>
+        <ActivityIndicator size="large" color="#FFFFFF" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>

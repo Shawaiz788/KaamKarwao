@@ -14,13 +14,16 @@ export default function AuthLayout() {
     }
 
     if (user) {
+        const isProfileIncomplete = !user.displayName;
+        if (isProfileIncomplete) {
+            return <Redirect href={'/profile-setup'} />;
+        }
         return <Redirect href={'/HomeScreen'} />;
     }
 
     return (
         <Stack>
             <Stack.Screen name='sign-in' options={{ headerShown: false }} />
-            <Stack.Screen name='sign-up' options={{ headerShown: false }} />
             <Stack.Screen name='verify' options={{ headerShown: false }} />
         </Stack>
     );

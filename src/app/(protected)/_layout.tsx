@@ -1,9 +1,10 @@
-import { Slot, Redirect } from 'expo-router';
+import { Slot, Redirect, usePathname } from 'expo-router';
 import { useAuth } from '../../provider/auth';
 import { View, ActivityIndicator } from 'react-native';
 
 export default function ProtectedLayout() {
     const { user, initializing } = useAuth();
+    const pathname = usePathname();
 
     if (initializing) {
         return (
@@ -17,8 +18,10 @@ export default function ProtectedLayout() {
         return <Redirect href='/' />;
     }
 
-    // Replace user?.unsafeMetadata check with your database-fetched metadata
-    // for profile setup (see Step 5)
+    const isProfileIncomplete = !user.displayName;
+    if (isProfileIncomplete && pathname !== '/profile-setup') {
+        return <Redirect href='/profile-setup' />;
+    }
 
     return <Slot />;
 }

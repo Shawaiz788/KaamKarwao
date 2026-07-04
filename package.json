@@ -6,7 +6,8 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "get-debug-key": "keytool -list -v -alias androiddebugkey -keystore android/app/debug.keystore -storepass android -keypass android"
   },
   "dependencies": {
     "@clerk/clerk-expo": "^2.19.31",
