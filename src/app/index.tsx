@@ -66,7 +66,7 @@ export default function WelcomeScreen() {
               style={styles.logoImage}
             />
           </View>
-          <Text style={styles.brandName}>KaamKar</Text>
+          <Text style={styles.brandName}>KaamKarwao</Text>
           <Text style={styles.brandSubtitle}>Find trusted local services</Text>
         </View>
 

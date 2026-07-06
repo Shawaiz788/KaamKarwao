@@ -123,35 +123,45 @@ export default function SignInScreen() {
                                 <Controller
                                     control={control}
                                     name="phone"
-                                    render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => (
-                                        <View style={styles.inputContainer}>
-                                            <View
-                                                style={[
-                                                    styles.inputFieldContainer,
-                                                    {
-                                                        borderColor: error ? '#EF4444' : '#E5E7EB',
-                                                        backgroundColor: '#F9FAFB'
-                                                    }
-                                                ]}
-                                            >
-                                                <Text style={styles.countryCode}>+92</Text>
-                                                <TextInput
-                                                    style={styles.phoneInput}
-                                                    placeholder="3001234567"
-                                                    placeholderTextColor="#9CA3AF"
-                                                    keyboardType="numeric"
-                                                    autoFocus
-                                                    value={value}
-                                                    onChangeText={(text) => {
-                                                        const clean = text.replace(/[^0-9]/g, '').slice(0, 10);
-                                                        onChange(clean);
-                                                    }}
-                                                    onBlur={onBlur}
-                                                />
+                                    render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => {
+                                        const isValid = /^[0-9]{10}$/.test(value || '');
+                                        return (
+                                            <View style={styles.inputContainer}>
+                                                <View
+                                                    style={[
+                                                        styles.inputFieldContainer,
+                                                        {
+                                                            borderColor: error ? '#EF4444' : (isValid ? '#16A34A' : '#E5E7EB'),
+                                                            backgroundColor: '#F9FAFB'
+                                                        }
+                                                    ]}
+                                                >
+                                                    <Text style={styles.countryCode}>+92</Text>
+                                                    <TextInput
+                                                        style={styles.phoneInput}
+                                                        placeholder="3001234567"
+                                                        placeholderTextColor="#9CA3AF"
+                                                        keyboardType="numeric"
+                                                        autoFocus
+                                                        value={value}
+                                                        onChangeText={(text) => {
+                                                            const clean = text.replace(/[^0-9]/g, '').slice(0, 10);
+                                                            onChange(clean);
+                                                        }}
+                                                        onBlur={onBlur}
+                                                    />
+                                                    <View style={styles.indicatorContainer}>
+                                                        {isValid ? (
+                                                            <Ionicons name="checkmark-circle" size={20} color="#16A34A" />
+                                                        ) : (
+                                                            <View style={styles.dotIndicator} />
+                                                        )}
+                                                    </View>
+                                                </View>
+                                                {error && <Text style={styles.errorText}>{error.message}</Text>}
                                             </View>
-                                            {error && <Text style={styles.errorText}>{error.message}</Text>}
-                                        </View>
-                                    )}
+                                        );
+                                    }}
                                 />
                             </View>
 
@@ -399,5 +409,18 @@ const styles = StyleSheet.create({
         fontSize: 12,
         marginTop: 4,
         fontWeight: '500',
+    },
+    indicatorContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: 24,
+        height: 24,
+        marginLeft: 8,
+    },
+    dotIndicator: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#9CA3AF',
     },
 });
