@@ -89,6 +89,9 @@ export const loginUser = async (phone_number: string, password: string): Promise
     console.log('[loginUser API] Response Body:', responseText);
 
     if (!response.ok) {
+        if (response.status === 400 || response.status === 401 || response.status === 403) {
+            throw new Error('Invalid phone number or password. Please try again.');
+        }
         throw new Error(`Login failed. Status: ${response.status}. Response: ${responseText}`);
     }
 
