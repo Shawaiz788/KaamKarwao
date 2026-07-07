@@ -41,9 +41,12 @@ export default function VerifyScreen() {
   });
 
   const router = useRouter();
+
   const params = useLocalSearchParams<{
     phoneNumber?: string;
     verificationId?: string;
+    password?: string;
+    flowType?: string;
   }>();
 
   const phoneNumber = params.phoneNumber || '';
@@ -90,12 +93,17 @@ export default function VerifyScreen() {
       setFeedbackType('success');
       setFeedbackMessage('Verification successful!');
       setIsVerified(true);
-      
+
       const isNewUser = userCredential.additionalUserInfo?.isNewUser;
       const isProfileIncomplete = !userCredential.user.displayName;
 
       if (isNewUser || isProfileIncomplete) {
-        router.replace('/profile-setup');
+        router.replace({
+          pathname: '/profile-setup',
+          params: {
+            ...params
+          }
+        });
       } else {
         router.replace('/home');
       }

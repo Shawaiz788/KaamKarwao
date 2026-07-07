@@ -11,19 +11,23 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '../../provider/auth'; // Updated import
 import { updateProfile } from '@react-native-firebase/auth';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { createUser } from '../../../api/user';
+import { useMutation } from '@tanstack/react-query';
+import { createCountry, createCity, createArea, createLocation } from '../../../api/location';
 
-type City = 'Lahore' | 'Karachi' | 'Islamabad' | 'Rawalpindi';
+type City = 'Lahore' | 'Karachi' | 'Islamabad';
 type Role = 'client' | 'provider';
 
 export default function ProfileSetupScreen() {
   const insets = useSafeAreaInsets();
   const { user, reloadUser } = useAuth(); // Updated hook usage
   const router = useRouter();
+  const params = useLocalSearchParams();
 
   // Component States
   const [fullName, setFullName] = useState('');
@@ -36,7 +40,72 @@ export default function ProfileSetupScreen() {
   const isNameValid = fullName.trim().length >= 3;
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
-  const handleGoToHAAN = async () => {
+  const addMutation = useMutation({
+    mutationFn: createUser,
+  })
+  const CreateUser = async () => {
+    if (!user)
+      return null;
+
+    // Split fullName into first_name and last_name
+    const nameParts = fullName.trim().split(/\s+/);
+    const first_name = nameParts[0] || '';
+    const last_name = nameParts.slice(1).join(' ') || '';
+
+    // Map role to user_type
+    const user_type = {
+      id: role === 'client' ? 1 : 2,
+      name: role,
+    };
+
+    // 1. Post Country
+    const countryData = await createCountry('Pakistan');
+    const countryId = countryData.id;
+
+    // 2. Post City
+    const cityData = await createCity(countryId, city);
+    const cityId = cityData.id;
+
+    // 3. Post Area
+    const areaData = await createArea(cityId, 'Default Area');
+    const areaId = areaData.id;
+
+    // 4. Post Location
+    const locationData = await createLocation({
+      house_number: 0,
+      street_number: '',
+      landmark: '',
+      pin_location: '',
+      zip_code: 0,
+      area: {
+        id: areaId,
+        name: 'Default Area',
+      },
+      city: {
+        id: cityId,
+        name: city,
+      },
+      country: {
+        id: countryId,
+        name: 'Pakistan',
+      },
+    });
+
+    // Construct the backend User object (omitting id and overall_rating)
+    const newUser = {
+      first_name,
+      last_name,
+      phone_number: user.phoneNumber || '',
+      email: email.trim(),
+      gender: 'other', // Default value since it's not collected on this screen
+      user_type,
+      location: locationData,
+    };
+
+    return await addMutation.mutateAsync(newUser);
+  };
+
+  const handleGoToHome = async () => {
     if (!user) return;
 
     // Form Validation
@@ -75,7 +144,15 @@ export default function ProfileSetupScreen() {
         phone: user.phoneNumber,
         city,
         role,
+        password: params.password,
       });
+      try {
+        await CreateUser()
+
+      } catch (e) {
+        console.log('Error while creating user:', e)
+        router.replace('/')
+      }
 
       console.log('Profile setup saved successfully!');
       router.replace('/home');
@@ -292,7 +369,7 @@ export default function ProfileSetupScreen() {
                 pressed && styles.saveButtonPressed,
                 isLoading && styles.saveButtonDisabled,
               ]}
-              onPress={handleGoToHAAN}
+              onPress={handleGoToHome}
               disabled={isLoading}
             >
               {isLoading ? (

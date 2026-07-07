@@ -1,22 +1,9 @@
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
-import { City, Country, Area } from './location';
+import { City, Country, Area, UserLocation } from './location';
 
 export interface UserType {
     id: number;
     name: string;
-}
-
-
-
-export interface Location {
-    house_number: number;
-    street_number: string;
-    landmark: string;
-    pin_location: string;
-    zip_code: number;
-    area: Area;
-    city: City;
-    country: Country;
 }
 
 export interface User {
@@ -28,7 +15,7 @@ export interface User {
     gender: string;
     overall_rating?: number;
     user_type: UserType;
-    location: Location;
+    location: UserLocation;
 }
 
 export const getUsers = async (): Promise<User[]> => {
