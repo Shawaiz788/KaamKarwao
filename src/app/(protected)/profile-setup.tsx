@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import * as SecureStore from 'expo-secure-store';
 import {
   StyleSheet,
   Text,
@@ -12,8 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useAuth } from '../../provider/auth'; // Updated import
-import { updateProfile } from '@react-native-firebase/auth';
+import { useAuth } from '../../provider/auth';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createUser } from '../../../api/user';
@@ -24,7 +24,7 @@ type Role = 'client' | 'provider';
 
 export default function ProfileSetupScreen() {
   const insets = useSafeAreaInsets();
-  const { user, reloadUser } = useAuth(); // Updated hook usage
+  const { user, login } = useAuth();
   const router = useRouter();
   const params = useLocalSearchParams();
 
@@ -35,11 +35,11 @@ export default function ProfileSetupScreen() {
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
   const [isLoadingCities, setIsLoadingCities] = useState(false);
   const [role, setRole] = useState<Role>('client');
-  const [gender, setGender] = useState<string>('other');
+  const [gender, setGender] = useState<string>('male');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const loadCities = async () => {
       setIsLoadingCities(true);
       try {
@@ -86,7 +86,7 @@ export default function ProfileSetupScreen() {
     const last_name = nameParts.slice(1).join(' ') || '';
 
     // Map role to  (Viewer and Worker in the database)
-    const usertype_id = role === 'client' ? 1 : 2;
+    const usertype_id = role === 'provider' ? 1 : 2;
 
 
     if (!selectedCity) {
@@ -98,6 +98,9 @@ export default function ProfileSetupScreen() {
 
 
 
+    const savedPassword = await SecureStore.getItemAsync('pending_signup_password');
+    const passwordToUse = savedPassword || (params.password as string) || "MyPassword2000@";
+
     const newUser = {
       first_name,
       last_name,
@@ -106,7 +109,7 @@ export default function ProfileSetupScreen() {
       gender,
       usertype_id: usertype_id,
       location_id: 1,
-      password: "MyPassword2000@",
+      password: passwordToUse,
       overall_rating: 5,
     };
 
@@ -139,21 +142,33 @@ export default function ProfileSetupScreen() {
     try {
       // 1. Call the backend API FIRST to register the user in Postgres
       console.log('[profile-setup] Starting CreateUser chain...');
-      await CreateUser();
+      const createdUser = await CreateUser();
 
-      // 2. Update Firebase User Profile Display Name ONLY AFTER database registration succeeds
-      await updateProfile(user, {
-        displayName: fullName.trim(),
-      });
+      // Clean up the temporary password storage
+      await SecureStore.deleteItemAsync('pending_signup_password');
 
-      // 3. Reload user in context to update state
-      await reloadUser();
+      // Update local session
+      if (createdUser && user) {
+        const appUser = {
+          uid: createdUser.id?.toString() || user.uid,
+          displayName: `${createdUser.first_name} ${createdUser.last_name}`.trim(),
+          email: createdUser.email,
+          phoneNumber: createdUser.phone_number,
+          id: createdUser.id,
+          first_name: createdUser.first_name,
+          last_name: createdUser.last_name,
+          gender: createdUser.gender,
+          usertype_id: createdUser.usertype_id,
+          location_id: createdUser.location_id,
+        };
+        await login(appUser);
+      }
 
       console.log('Saved locally / logged profile parameters:', {
-        uid: user.uid,
+        uid: user?.uid,
         email: email.trim(),
         fullName: fullName.trim(),
-        phone: user.phoneNumber,
+        phone: user?.phoneNumber,
         city: selectedCity?.name,
         role,
         gender,
@@ -319,8 +334,8 @@ export default function ProfileSetupScreen() {
                           genderName === 'Male'
                             ? 'male'
                             : genderName === 'Female'
-                            ? 'female'
-                            : 'people'
+                              ? 'female'
+                              : 'people'
                         }
                         size={18}
                         color={isSelected ? '#FFFFFF' : '#4B5563'}

@@ -16,10 +16,9 @@ import { Link, useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { getAuth, signInWithPhoneNumber, signInAnonymously, updateProfile } from '@react-native-firebase/auth';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getUserById, getUserByPhoneNumber } from '../../../api/user';
+import { getUserById, loginUser } from '../../../api/user';
 import { useAuth } from '../../provider/auth';
 
 const signInSchema = z.object({
@@ -53,7 +52,7 @@ export default function SignInScreen() {
     });
 
     const router = useRouter();
-    const { reloadUser } = useAuth();
+    const { login } = useAuth();
 
     const [isLoading, setIsLoading] = useState(false);
 
@@ -61,30 +60,29 @@ export default function SignInScreen() {
         setIsLoading(true);
         try {
             const formattedPhone = `+92${data.phone}`;
-            console.log('[SignIn] Fetching user info for phone:', formattedPhone);
-            const userInfo = await getUserByPhoneNumber(data.phone);
-            console.log('[SignIn] Fetched user info:', userInfo);
+            console.log('[SignIn] Logging in for phone:', formattedPhone);
+            const userInfo = await loginUser(formattedPhone, data.password);
+            console.log('[SignIn] Login successful. User info:', userInfo);
 
-            const auth = getAuth();
-
-            // Clear any stale user session to prevent firebase auth from getting stuck
-            if (auth.currentUser) {
-                await auth.signOut();
+            if (!userInfo || !userInfo.id) {
+                throw new Error('Login failed. Invalid user data received from server.');
             }
 
-            // Authenticate directly (mock via signInAnonymously)
-            const userCredential = await signInAnonymously(auth);
+            // Map and log in locally
+            const appUser = {
+                uid: userInfo.id.toString(),
+                displayName: `${userInfo.first_name} ${userInfo.last_name}`.trim(),
+                email: userInfo.email,
+                phoneNumber: userInfo.phone_number,
+                id: userInfo.id,
+                first_name: userInfo.first_name,
+                last_name: userInfo.last_name,
+                gender: userInfo.gender,
+                usertype_id: userInfo.usertype_id,
+                location_id: userInfo.location_id,
+            };
 
-            const fullName = userInfo ? `${userInfo.first_name} ${userInfo.last_name}`.trim() : '';
-            if (fullName) {
-                // Set the display name to mock user info
-                await updateProfile(userCredential.user, {
-                    displayName: fullName,
-                });
-            }
-
-            // Sync the local Auth context
-            await reloadUser();
+            await login(appUser);
 
             // Redirect directly to home screen
             router.replace('/home');

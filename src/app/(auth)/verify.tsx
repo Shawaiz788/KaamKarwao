@@ -18,6 +18,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { getAuth, PhoneAuthProvider, signInWithCredential, signInWithPhoneNumber } from '@react-native-firebase/auth';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../../provider/auth';
 const verifySchema = z.object({
   code: z.string({ message: 'Code is required' }).length(6, 'Verification code must be 6 digits'),
 });
@@ -41,6 +42,7 @@ export default function VerifyScreen() {
   });
 
   const router = useRouter();
+  const { login } = useAuth();
 
   const params = useLocalSearchParams<{
     phoneNumber?: string;
@@ -94,22 +96,29 @@ export default function VerifyScreen() {
       setFeedbackMessage('Verification successful!');
       setIsVerified(true);
 
-      const isNewUser = userCredential.additionalUserInfo?.isNewUser;
-      const isProfileIncomplete = !userCredential.user.displayName;
+      // Establish custom session
+      const appUser = {
+        uid: userCredential.user.uid,
+        displayName: userCredential.user.displayName || '',
+        email: userCredential.user.email || '',
+        phoneNumber: userCredential.user.phoneNumber || phoneNumber,
+        first_name: '',
+        last_name: '',
+        gender: '',
+        usertype_id: 2,
+        location_id: 1,
+      };
+      await login(appUser);
 
-      if (isNewUser || isProfileIncomplete) {
-        router.replace({
-          pathname: '/profile-setup',
-          params: {
-            phoneNumber: params.phoneNumber || '',
-            verificationId: params.verificationId || '',
-            password: params.password || '',
-            flowType: params.flowType || '',
-          }
-        });
-      } else {
-        router.replace('/home');
-      }
+      router.replace({
+        pathname: '/profile-setup',
+        params: {
+          phoneNumber: params.phoneNumber || '',
+          verificationId: params.verificationId || '',
+          password: params.password || '',
+          flowType: params.flowType || '',
+        }
+      });
     } catch (err: any) {
       console.log('Verification error: ', err);
       setError('root', { message: err.message || 'Verification failed. Please try again.' });

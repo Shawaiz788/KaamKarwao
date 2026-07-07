@@ -1,42 +1,85 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { getAuth, onAuthStateChanged, User, reload } from '@react-native-firebase/auth';
+import * as SecureStore from 'expo-secure-store';
+
+export interface AppUser {
+    uid: string;
+    displayName: string;
+    email: string;
+    phoneNumber: string;
+    id?: number;
+    first_name: string;
+    last_name: string;
+    gender: string;
+    usertype_id: number;
+    location_id: number;
+}
 
 interface AuthContextType {
-    user: User | null;
+    user: AppUser | null;
     initializing: boolean;
+    login: (user: AppUser) => Promise<void>;
+    logout: () => Promise<void>;
     reloadUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
     user: null,
     initializing: true,
+    login: async () => {},
+    logout: async () => {},
     reloadUser: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [initializing, setInitializing] = useState(true);
-    const [user, setUser] = useState<User | null>(null);
+    const [user, setUser] = useState<AppUser | null>(null);
 
-    useEffect(() => {
-        // Listen to Firebase auth state changes
-        const auth = getAuth();
-        const subscriber = onAuthStateChanged(auth, (userState) => {
-            setUser(userState);
-            if (initializing) setInitializing(false);
-        });
-        return subscriber; // unsubscribe on unmount
-    }, [initializing]);
-
-    const reloadUser = async () => {
-        const auth = getAuth();
-        if (auth.currentUser) {
-            await reload(auth.currentUser);
-            setUser(auth.currentUser);
+    const loadSession = async () => {
+        try {
+            const sessionStr = await SecureStore.getItemAsync('user_session');
+            if (sessionStr) {
+                const sessionUser = JSON.parse(sessionStr);
+                setUser(sessionUser);
+            } else {
+                setUser(null);
+            }
+        } catch (e) {
+            console.error('Error loading user session:', e);
+        } finally {
+            setInitializing(false);
         }
     };
 
+    useEffect(() => {
+        loadSession();
+    }, []);
+
+    const login = async (appUser: AppUser) => {
+        try {
+            await SecureStore.setItemAsync('user_session', JSON.stringify(appUser));
+            setUser(appUser);
+        } catch (e) {
+            console.error('Error saving user session:', e);
+            throw e;
+        }
+    };
+
+    const logout = async () => {
+        try {
+            await SecureStore.deleteItemAsync('user_session');
+            setUser(null);
+        } catch (e) {
+            console.error('Error clearing user session:', e);
+            throw e;
+        }
+    };
+
+    const reloadUser = async () => {
+        await loadSession();
+    };
+
     return (
-        <AuthContext.Provider value={{ user, initializing, reloadUser }}>
+        <AuthContext.Provider value={{ user, initializing, login, logout, reloadUser }}>
             {children}
         </AuthContext.Provider>
     );

@@ -74,11 +74,27 @@ export const getUserById = async (id: number): Promise<User> => {
     return result.json();
 };
 
-export const getUserByPhoneNumber = async (phoneNumber: string): Promise<User> => {
-    const response = await fetch(`${API_URL}/User?phoneNumber=${phoneNumber}`);
-    const result = await response.json();
-    if (Array.isArray(result)) {
-        return result[0];
+export const loginUser = async (phone_number: string, password: string): Promise<User> => {
+    const url = `${API_URL}/app/user/login/`;
+    console.log('[loginUser API] Logging in via URL:', url);
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ phone_number, password }),
+    });
+    const responseText = await response.text();
+    console.log('[loginUser API] Response Status:', response.status);
+    console.log('[loginUser API] Response Body:', responseText);
+
+    if (!response.ok) {
+        throw new Error(`Login failed. Status: ${response.status}. Response: ${responseText}`);
     }
-    return result;
+
+    try {
+        return JSON.parse(responseText);
+    } catch (e: any) {
+        throw new Error(`Failed to parse login response as JSON. Error: ${e.message}. Content: ${responseText}`);
+    }
 };

@@ -13,13 +13,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { MOCK_PROS, CATEGORIES, Pro } from './HomeView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from 'expo-router';
+import { getCities } from '../../../api/location';
 
 interface BrowseViewProps {
   initialCategory?: string;
   onSelectPro: (proName: string) => void;
 }
-
-const CITIES = ['All Cities', 'Lahore', 'Karachi', 'Islamabad', 'Rawalpindi'];
 
 export default function BrowseView({
   initialCategory = 'All',
@@ -28,6 +27,7 @@ export default function BrowseView({
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const inputRef = useRef<TextInput>(null);
+  const [cities, setCities] = useState<string[]>(['All Cities', 'Lahore', 'Karachi', 'Islamabad', 'Rawalpindi']);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -37,6 +37,21 @@ export default function BrowseView({
     });
     return unsubscribe;
   }, [navigation]);
+
+  useEffect(() => {
+    const loadCities = async () => {
+      try {
+        const fetchedCities = await getCities();
+        if (fetchedCities && fetchedCities.length > 0) {
+          const names = fetchedCities.map((c) => c.name);
+          setCities(['All Cities', ...names]);
+        }
+      } catch (err) {
+        console.error('Error loading cities in BrowseView:', err);
+      }
+    };
+    loadCities();
+  }, []);
 
   const [selectedCity, setSelectedCity] = useState('All Cities');
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
@@ -109,7 +124,7 @@ export default function BrowseView({
           style={styles.citiesScroll}
           contentContainerStyle={styles.citiesScrollContent}
         >
-          {CITIES.map((city) => {
+          {cities.map((city) => {
             const isActive = selectedCity === city;
             return (
               <Pressable

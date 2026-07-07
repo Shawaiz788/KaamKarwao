@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import * as SecureStore from 'expo-secure-store';
 import {
     StyleSheet,
     Text,
@@ -74,6 +75,7 @@ export default function SignUpScreen() {
             }
             
             const confirmation = await signInWithPhoneNumber(auth, formattedPhone);
+            await SecureStore.setItemAsync('pending_signup_password', data.password);
             router.push({
                 pathname: '/verify',
                 params: {
