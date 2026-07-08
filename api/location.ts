@@ -2,12 +2,12 @@ const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 const API_URL = BASE_URL ? BASE_URL.replace(/\/$/, '') : '';
 
 import { Country, getCountries, createCountry } from './country';
-import { City, getCities, getCitiesByCountry, createCity } from './city';
-import { Area, getAreas, getAreasByCity, createArea } from './area';
+import { City, getCities, createCity } from './city';
+import { Area, getAreas, createArea } from './area';
 
 export { Country, getCountries, createCountry };
-export { City, getCities, getCitiesByCountry, createCity };
-export { Area, getAreas, getAreasByCity, createArea };
+export { City, getCities, createCity };
+export { Area, getAreas, createArea };
 
 export interface UserLocation {
   id?: number;

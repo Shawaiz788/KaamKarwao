@@ -20,11 +20,11 @@ export interface User {
     location_id: number;
 }
 
-export const getUsers = async (): Promise<User[]> => {
-    const response = await fetch(`${API_URL}/User`);
-    const result = await response.json();
-    return result;
-};
+// export const getUsers = async (): Promise<User[]> => {
+//     const response = await fetch(`${API_URL}/User`);
+//     const result = await response.json();
+//     return result;
+// };
 
 export const createUser = async (user: Omit<User, 'id'>): Promise<User> => {
     console.log('[createUser API] Sending payload:', JSON.stringify(user, null, 2));
@@ -51,28 +51,28 @@ export const createUser = async (user: Omit<User, 'id'>): Promise<User> => {
     }
 };
 
-export const updateUser = async (user: User): Promise<User> => {
-    const result = await fetch(`${API_URL}/User/${user.id}`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(user),
-    });
-    return result.json();
-};
+// export const updateUser = async (user: User): Promise<User> => {
+//     const result = await fetch(`${API_URL}/User/${user.id}`, {
+//         method: 'PUT',
+//         headers: {
+//             'Content-Type': 'application/json',
+//         },
+//         body: JSON.stringify(user),
+//     });
+//     return result.json();
+// };
 
-export const deleteUser = async (id: number): Promise<User> => {
-    const result = await fetch(`${API_URL}/User/${id}`, {
-        method: 'DELETE',
-    });
-    return result.json();
-};
+// export const deleteUser = async (id: number): Promise<User> => {
+//     const result = await fetch(`${API_URL}/User/${id}`, {
+//         method: 'DELETE',
+//     });
+//     return result.json();
+// };
 
-export const getUserById = async (id: number): Promise<User> => {
-    const result = await fetch(`${API_URL}/User/${id}`);
-    return result.json();
-};
+// export const getUserById = async (id: number): Promise<User> => {
+//     const result = await fetch(`${API_URL}/User/${id}`);
+//     return result.json();
+// };
 
 export const loginUser = async (phone_number: string, password: string): Promise<User> => {
     const url = `${API_URL}/app/user/login/`;

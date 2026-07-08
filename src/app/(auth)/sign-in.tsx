@@ -18,7 +18,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getUserById, loginUser } from '../../../api/user';
+import { loginUser } from '../../../api/user';
 import { useAuth } from '../../provider/auth';
 
 const signInSchema = z.object({

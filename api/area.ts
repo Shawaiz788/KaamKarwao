@@ -11,9 +11,9 @@ export const getAreas = async (): Promise<Area[]> => {
     return response.json();
 };
 
-export const getAreasByCity = async (cityId: number): Promise<Area[]> => {
-    return getAreas();
-};
+// export const getAreasByCity = async (cityId: number): Promise<Area[]> => {
+//     return getAreas();
+// };
 
 export const createArea = async (cityId: number, name: string): Promise<Area> => {
     const response = await fetch(`${API_URL}/areas/`, {

@@ -13,7 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { MOCK_PROS, CATEGORIES, Pro } from './HomeView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from 'expo-router';
-import { getCities } from '../../../api/location';
+import { useAuth } from '../../provider/auth';
+import { COUNTRY_DATA, getCountryFromPhone } from '../../constants/locationData';
 
 interface BrowseViewProps {
   initialCategory?: string;
@@ -27,7 +28,10 @@ export default function BrowseView({
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const inputRef = useRef<TextInput>(null);
-  const [cities, setCities] = useState<string[]>(['All Cities', 'Lahore', 'Karachi', 'Islamabad', 'Rawalpindi']);
+  const { user } = useAuth();
+  const country = getCountryFromPhone(user?.phoneNumber);
+  const countryCities = COUNTRY_DATA[country]?.cities || COUNTRY_DATA['Pakistan'].cities;
+  const [cities, setCities] = useState<string[]>(['All Cities', ...countryCities]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -39,19 +43,8 @@ export default function BrowseView({
   }, [navigation]);
 
   useEffect(() => {
-    const loadCities = async () => {
-      try {
-        const fetchedCities = await getCities();
-        if (fetchedCities && fetchedCities.length > 0) {
-          const names = fetchedCities.map((c) => c.name);
-          setCities(['All Cities', ...names]);
-        }
-      } catch (err) {
-        console.error('Error loading cities in BrowseView:', err);
-      }
-    };
-    loadCities();
-  }, []);
+    setCities(['All Cities', ...countryCities]);
+  }, [user?.phoneNumber]);
 
   const [selectedCity, setSelectedCity] = useState('All Cities');
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);

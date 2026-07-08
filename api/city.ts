@@ -11,9 +11,9 @@ export const getCities = async (): Promise<City[]> => {
     return response.json();
 };
 
-export const getCitiesByCountry = async (countryId: number): Promise<City[]> => {
-    return getCities();
-};
+// export const getCitiesByCountry = async (countryId: number): Promise<City[]> => {
+//     return getCities();
+// };
 
 export const createCity = async (countryId: number, name: string): Promise<City> => {
     const response = await fetch(`${API_URL}/cities/`, {

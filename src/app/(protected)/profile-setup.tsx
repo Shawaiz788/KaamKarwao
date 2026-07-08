@@ -332,7 +332,7 @@ export default function ProfileSetupScreen() {
     console.log('[profile-setup] Resolved Location ID:', locationId);
 
     const savedPassword = await SecureStore.getItemAsync('pending_signup_password');
-    const passwordToUse = savedPassword || (params.password as string) || "MyPassword2000@";
+    const passwordToUse = savedPassword || (params.password as string);
 
     const newUser = {
       first_name,
