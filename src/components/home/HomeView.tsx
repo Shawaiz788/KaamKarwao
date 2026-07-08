@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   Alert,
   PanResponder,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -275,6 +276,26 @@ export default function HomeView({ userName }: HomeViewProps) {
   const [budget, setBudget] = useState('');
   const [description, setDescription] = useState('');
   const [paymentPref, setPaymentPref] = useState('cash');
+
+  // Keyboard height state to slide absolute bottom sheet up
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Navigation / Drawer / History Modals State
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -651,13 +672,12 @@ export default function HomeView({ userName }: HomeViewProps) {
           </Text>
           <Ionicons name="chevron-forward" size={16} color="#10B981" style={{ marginLeft: 8 }} />
         </Pressable>
-      )}
-
-      {/* 5. BOTTOM CONTROL SHEET (ANIMATED COLLAPSIBLE) */}
+      )}      {/* 5. BOTTOM CONTROL SHEET (ANIMATED COLLAPSIBLE) */}
       <Animated.View style={[
         styles.bottomSheet, 
         { 
           transform: [{ translateY: sheetTranslateY }],
+          bottom: keyboardHeight, // Dynamically shift above the keyboard
           paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 16 
         }
       ]}>
@@ -679,94 +699,102 @@ export default function HomeView({ userName }: HomeViewProps) {
           )}
         </View>
 
-        {/* Scrolling Categories Selection */}
-        <Text style={styles.sheetTitle}>What service do you need?</Text>
+        {/* Scrollable contents to handle short keyboard viewports */}
         <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoriesScroll}
+          style={{ maxHeight: height * 0.4 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          scrollEnabled={!sheetCollapsed}
         >
-          {CATEGORIES.map((cat) => {
-            const isSelected = activeCategory === cat.name;
-            return (
-              <Pressable
-                key={cat.name}
-                style={[styles.categoryCard, isSelected && styles.categoryCardSelected]}
-                onPress={() => setActiveCategory(cat.name)}
-              >
-                <View style={[styles.categoryIconCircle, { backgroundColor: cat.color + '15' }]}>
-                  <Ionicons name={cat.icon as any} size={22} color={isSelected ? '#10B981' : cat.color} />
-                </View>
-                <Text style={[styles.categoryLabel, isSelected && styles.categoryLabelSelected]}>
-                  {cat.name}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+          {/* Scrolling Categories Selection */}
+          <Text style={styles.sheetTitle}>What service do you need?</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoriesScroll}
+          >
+            {CATEGORIES.map((cat) => {
+              const isSelected = activeCategory === cat.name;
+              return (
+                <Pressable
+                  key={cat.name}
+                  style={[styles.categoryCard, isSelected && styles.categoryCardSelected]}
+                  onPress={() => setActiveCategory(cat.name)}
+                >
+                  <View style={[styles.categoryIconCircle, { backgroundColor: cat.color + '15' }]}>
+                    <Ionicons name={cat.icon as any} size={22} color={isSelected ? '#10B981' : cat.color} />
+                  </View>
+                  <Text style={[styles.categoryLabel, isSelected && styles.categoryLabelSelected]}>
+                    {cat.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
 
-        <View style={styles.inputContainer}>
-          {/* Location / Address display (Tap to search) */}
-          <Pressable style={styles.addressPill} onPress={() => setSearchModalVisible(true)}>
-            <Ionicons name="location" size={18} color="#EF4444" style={{ marginRight: 8 }} />
-            <Text style={styles.addressText} numberOfLines={1}>
-              {address}
-            </Text>
-          </Pressable>
+          <View style={styles.inputContainer}>
+            {/* Location / Address display (Tap to search) */}
+            <Pressable style={styles.addressPill} onPress={() => setSearchModalVisible(true)}>
+              <Ionicons name="location" size={18} color="#EF4444" style={{ marginRight: 8 }} />
+              <Text style={styles.addressText} numberOfLines={1}>
+                {address}
+              </Text>
+            </Pressable>
 
-          {/* Budget Input & Payment selection in a Row */}
-          <View style={styles.formRow}>
-            <View style={styles.budgetInputContainer}>
-              <Text style={styles.currencyPrefix}>Rs.</Text>
+            {/* Budget Input & Payment selection in a Row */}
+            <View style={styles.formRow}>
+              <View style={styles.budgetInputContainer}>
+                <Text style={styles.currencyPrefix}>Rs.</Text>
+                <TextInput
+                  style={styles.budgetInput}
+                  placeholder="Enter Budget"
+                  placeholderTextColor="#9CA3AF"
+                  keyboardType="numeric"
+                  value={budget}
+                  onChangeText={setBudget}
+                />
+              </View>
+
+              {/* Payment Method Selector */}
+              <View style={styles.paymentSelectorContainer}>
+                {PAYMENT_METHODS.map((pm) => {
+                  const isSelected = paymentPref === pm.id;
+                  return (
+                    <Pressable
+                      key={pm.id}
+                      style={[styles.paymentBtn, isSelected && styles.paymentBtnSelected]}
+                      onPress={() => setPaymentPref(pm.id)}
+                    >
+                      <Ionicons name={pm.icon as any} size={18} color={isSelected ? '#10B981' : '#6B7280'} />
+                      <Text style={[styles.paymentBtnLabel, isSelected && styles.paymentLabelSelected]}>
+                        {pm.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Description Input */}
+            <View style={styles.descriptionContainer}>
+              <Ionicons name="create-outline" size={18} color="#6B7280" style={{ marginRight: 8 }} />
               <TextInput
-                style={styles.budgetInput}
-                placeholder="Enter Budget"
+                style={styles.descriptionInput}
+                placeholder="Provide details about the job..."
                 placeholderTextColor="#9CA3AF"
-                keyboardType="numeric"
-                value={budget}
-                onChangeText={setBudget}
+                multiline
+                numberOfLines={2}
+                value={description}
+                onChangeText={setDescription}
               />
             </View>
-
-            {/* Payment Method Selector */}
-            <View style={styles.paymentSelectorContainer}>
-              {PAYMENT_METHODS.map((pm) => {
-                const isSelected = paymentPref === pm.id;
-                return (
-                  <Pressable
-                    key={pm.id}
-                    style={[styles.paymentBtn, isSelected && styles.paymentBtnSelected]}
-                    onPress={() => setPaymentPref(pm.id)}
-                  >
-                    <Ionicons name={pm.icon as any} size={18} color={isSelected ? '#10B981' : '#6B7280'} />
-                    <Text style={[styles.paymentBtnLabel, isSelected && styles.paymentLabelSelected]}>
-                      {pm.name}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
           </View>
 
-          {/* Description Input */}
-          <View style={styles.descriptionContainer}>
-            <Ionicons name="create-outline" size={18} color="#6B7280" style={{ marginRight: 8 }} />
-            <TextInput
-              style={styles.descriptionInput}
-              placeholder="Provide details about the job..."
-              placeholderTextColor="#9CA3AF"
-              multiline
-              numberOfLines={2}
-              value={description}
-              onChangeText={setDescription}
-            />
-          </View>
-        </View>
-
-        {/* Find Professional Action Button */}
-        <Pressable style={styles.actionButton} onPress={handleRequestTask}>
-          <Text style={styles.actionButtonText}>Find Professional</Text>
-        </Pressable>
+          {/* Find Professional Action Button */}
+          <Pressable style={styles.actionButton} onPress={handleRequestTask}>
+            <Text style={styles.actionButtonText}>Find Professional</Text>
+          </Pressable>
+        </ScrollView>
       </Animated.View>
 
       {/* 6. CUSTOM SLIDE-OUT DRAWER */}
@@ -788,7 +816,7 @@ export default function HomeView({ userName }: HomeViewProps) {
           </View>
         </View>
 
-        <View style={styles.drawerItemsContainer}>
+        <View style={[styles.drawerItemsContainer, { paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 16 }]}>
           {activeTask && (
             <Pressable
               style={styles.drawerItem}
@@ -969,8 +997,8 @@ export default function HomeView({ userName }: HomeViewProps) {
                       item.type === 'university' || item.type === 'college' || item.type === 'school'
                         ? 'school'
                         : item.type === 'shop' || item.type === 'mall' || item.type === 'supermarket'
-                        ? 'basket'
-                        : 'location'
+                          ? 'basket'
+                          : 'location'
                     }
                     size={20}
                     color="#4B5563"

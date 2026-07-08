@@ -17,7 +17,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { usePostJob, Bid } from '../../provider/post-job';
 import { useRouter } from 'expo-router';
 
@@ -95,7 +95,8 @@ export default function ActiveTaskScreen({ onBack }: ActiveTaskScreenProps) {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['top', 'bottom']}>
+      <View style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top > 0 ? insets.top + 10 : 20 }]}>
         <Pressable onPress={onBack} style={styles.backBtn}>
@@ -254,7 +255,7 @@ export default function ActiveTaskScreen({ onBack }: ActiveTaskScreenProps) {
       </ScrollView>
 
       {/* Cancel Button */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 16 }]}>
         <Pressable style={styles.cancelBtn} onPress={cancelTask}>
           <Text style={styles.cancelBtnText}>Cancel Job Request</Text>
         </Pressable>
@@ -349,7 +350,8 @@ export default function ActiveTaskScreen({ onBack }: ActiveTaskScreenProps) {
           </KeyboardAvoidingView>
         </Modal>
       )}
-    </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
