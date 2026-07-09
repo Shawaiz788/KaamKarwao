@@ -87,11 +87,15 @@ export default function PinAdjusterModal({
 
   const reCenterAdjuster = async () => {
     try {
-      let loc = await Location.getLastKnownPositionAsync();
-      if (!loc) {
-        loc = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
+      let loc = null;
+      try {
+        loc = await Promise.race([
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+          new Promise<any>((_, reject) => setTimeout(() => reject(new Error('timeout')), 2500))
+        ]);
+      } catch (e) {
+        console.log('[PinAdjusterModal] reCenterAdjuster request timed out. Fetching cached position...');
+        loc = await Location.getLastKnownPositionAsync();
       }
       if (loc) {
         const newCoords = {

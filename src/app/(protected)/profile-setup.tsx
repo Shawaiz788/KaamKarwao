@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import {
   StyleSheet,
@@ -36,134 +36,44 @@ const getLeafletHtml = (initialLat: number, initialLng: number) => `
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
-    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    #map { height: 100vh; width: 100vw; z-index: 1; }
-    .search-container {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      right: 10px;
-      z-index: 1000;
-      background: white;
-      padding: 6px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      display: flex;
-      gap: 6px;
-    }
-    .search-input {
-      flex: 1;
-      padding: 10px 14px;
-      border: 1px solid #E5E7EB;
-      border-radius: 8px;
-      font-size: 14px;
-      outline: none;
-    }
-    .search-btn {
-      background: #0B5A3E;
-      color: white;
-      border: none;
-      padding: 10px 16px;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    .confirm-btn-container {
-      position: absolute;
-      bottom: 20px;
-      left: 20px;
-      right: 20px;
-      z-index: 1000;
-    }
-    .confirm-btn {
-      background: #D97706;
-      color: white;
-      border: none;
-      padding: 14px;
-      border-radius: 12px;
-      font-size: 16px;
-      font-weight: bold;
-      width: 100%;
-      box-shadow: 0 4px 12px rgba(217, 119, 6, 0.4);
-      cursor: pointer;
-      text-align: center;
-    }
-    .confirm-btn:active {
-      background: #B45309;
-    }
+    body { margin: 0; padding: 0; background: #EAE6DF; }
+    #map { height: 100vh; width: 100vw; }
+    .leaflet-control-zoom { display: none !important; }
+    .leaflet-control-attribution { display: none !important; }
   </style>
 </head>
 <body>
-  <div class="search-container">
-    <input type="text" id="search-input" class="search-input" placeholder="Search place or address..." />
-    <button onclick="searchPlace()" class="search-btn">Search</button>
-  </div>
   <div id="map"></div>
-  <div class="confirm-btn-container">
-    <button onclick="confirmLocation()" class="confirm-btn">Confirm Selected Location</button>
-  </div>
-
   <script>
-    var map = L.map('map', { zoomControl: false }).setView([${initialLat}, ${initialLng}], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap'
+    var map = L.map('map', { 
+      zoomControl: false, 
+      attributionControl: false,
+      fadeAnimation: true,
+      zoomAnimation: true
+    }).setView([${initialLat}, ${initialLng}], 16);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 20,
+      subdomains: 'abcd'
     }).addTo(map);
 
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-    var marker = L.marker([${initialLat}, ${initialLng}], { draggable: true }).addTo(map);
-    var selectedCoords = { lat: ${initialLat}, lng: ${initialLng} };
-
-    function updateCoords(lat, lng) {
-      selectedCoords.lat = lat;
-      selectedCoords.lng = lng;
-    }
-
-    marker.on('dragend', function (e) {
-      var pos = marker.getLatLng();
-      updateCoords(pos.lat, pos.lng);
-    });
-
-    map.on('click', function (e) {
-      marker.setLatLng(e.latlng);
-      updateCoords(e.latlng.lat, e.latlng.lng);
-    });
-
-    function searchPlace() {
-      var query = document.getElementById('search-input').value;
-      if (!query) return;
-      
-      fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(query))
-        .then(function(response) { return response.json(); })
-        .then(function(data) {
-          if (data && data.length > 0) {
-            var first = data[0];
-            var lat = parseFloat(first.lat);
-            var lon = parseFloat(first.lon);
-            var latlng = [lat, lon];
-            map.setView(latlng, 16);
-            marker.setLatLng(latlng);
-            updateCoords(lat, lon);
-          } else {
-            alert('Place not found. Try another search query.');
-          }
-        })
-        .catch(function(err) {
-          console.error(err);
-          alert('Error searching for place. Please try again.');
-        });
-    }
-
-    function confirmLocation() {
+    map.on('moveend', function() {
+      var center = map.getCenter();
       if (window.ReactNativeWebView) {
         window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: 'LOCATION_SELECTED',
-          lat: selectedCoords.lat,
-          lng: selectedCoords.lng
+          type: 'REGION_CHANGED',
+          latitude: center.lat,
+          longitude: center.lng
         }));
       }
-    }
+    });
+
+    // Signal React Native that map is ready
+    map.whenReady(function() {
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'MAP_READY' }));
+      }
+    });
   </script>
 </body>
 </html>
@@ -191,12 +101,18 @@ export default function ProfileSetupScreen() {
   const [houseNumber, setHouseNumber] = useState('');
   const [streetNumber, setStreetNumber] = useState('');
   const [zipCode, setZipCode] = useState('');
-  const [pinLocation, setPinLocation] = useState('');
-  const [landmark, setLandmark] = useState('');
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [formattedAddress, setFormattedAddress] = useState('');
   const [showAreaDropdown, setShowAreaDropdown] = useState(false);
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [loadingGps, setLoadingGps] = useState(false);
+
+  // Map picker overlay states
+  const [mapAddress, setMapAddress] = useState('');
+  const [mapCoords, setMapCoords] = useState<{ latitude: number, longitude: number } | null>(null);
+  const mapWebViewRef = useRef<WebView>(null);
 
   const cityAreas = selectedCity
     ? (COUNTRY_DATA[countryName]?.areas[selectedCity] || [])
@@ -212,10 +128,42 @@ export default function ProfileSetupScreen() {
         }
         return;
       }
-      let loc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      setPinLocation(`${loc.coords.latitude}, ${loc.coords.longitude}`);
+      let loc = null;
+      try {
+        loc = await Promise.race([
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+          new Promise<any>((_, reject) => setTimeout(() => reject(new Error('timeout')), 2500))
+        ]);
+      } catch (e) {
+        console.log('[profile-setup] fetchGpsLocation request timed out. Fetching cached position...');
+        loc = await Location.getLastKnownPositionAsync();
+      }
+
+      if (!loc) {
+        throw new Error('GPS lookup failed.');
+      }
+      setLatitude(loc.coords.latitude);
+      setLongitude(loc.coords.longitude);
+
+      // Resolve address string from coords to pre-fill formatted address input
+      try {
+        let response = await Location.reverseGeocodeAsync({
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude
+        });
+        if (response && response.length > 0) {
+          const item = response[0];
+          const parts = [
+            item.name,
+            item.street,
+            item.district || item.subregion,
+            item.city
+          ].filter(Boolean);
+          setFormattedAddress(parts.join(', '));
+        }
+      } catch (err) {
+        // Silently catch reverse geocoding issues
+      }
     } catch (err: any) {
       if (!silent) {
         Alert.alert('GPS Error', 'Failed to retrieve your current location.');
@@ -226,8 +174,100 @@ export default function ProfileSetupScreen() {
     }
   };
 
+  // Sync map coordinates and address when map picker opens
   useEffect(() => {
-    if (!pinLocation) {
+    if (showMapPicker) {
+      const init = getInitialCoords();
+      setMapCoords({ latitude: init.lat, longitude: init.lng });
+      setMapAddress(latitude !== null && longitude !== null ? 'Selected Coordinates' : 'Loading address...');
+      reverseGeocodeMap(init.lat, init.lng);
+    }
+  }, [showMapPicker]);
+
+  const reverseGeocodeMap = async (lat: number, lng: number) => {
+    try {
+      let response = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+      if (response && response.length > 0) {
+        const item = response[0];
+        const parts = [
+          item.name,
+          item.street,
+          item.district || item.subregion,
+          item.city,
+        ].filter(Boolean);
+        setMapAddress(parts.join(', ') || `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+      } else {
+        setMapAddress(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+      }
+    } catch (e) {
+      setMapAddress(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+    }
+  };
+
+  const handleMapModalMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'REGION_CHANGED') {
+        const newCoords = {
+          latitude: data.latitude,
+          longitude: data.longitude,
+        };
+        setMapCoords(newCoords);
+        reverseGeocodeMap(data.latitude, data.longitude);
+      }
+    } catch (e) {
+      // JSON parse error
+    }
+  };
+
+  const reCenterMapPicker = async () => {
+    try {
+      let loc = null;
+      try {
+        loc = await Promise.race([
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+          new Promise<any>((_, reject) => setTimeout(() => reject(new Error('timeout')), 2500))
+        ]);
+      } catch (e) {
+        console.log('[profile-setup] reCenterMapPicker request timed out. Fetching cached position...');
+        loc = await Location.getLastKnownPositionAsync();
+      }
+      if (loc) {
+        const newCoords = {
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
+        };
+        setMapCoords(newCoords);
+        reverseGeocodeMap(newCoords.latitude, newCoords.longitude);
+
+        if (mapWebViewRef.current) {
+          const jsCode = `
+            if (map) {
+              map.setView([${newCoords.latitude}, ${newCoords.longitude}], 16);
+            }
+            true;
+          `;
+          mapWebViewRef.current.injectJavaScript(jsCode);
+        }
+      }
+    } catch (e) {
+      // Silence errors
+    }
+  };
+
+  const confirmSelectedMapLocation = () => {
+    if (mapCoords) {
+      setLatitude(mapCoords.latitude);
+      setLongitude(mapCoords.longitude);
+      if (mapAddress && mapAddress !== 'Loading address...') {
+        setFormattedAddress(mapAddress);
+      }
+    }
+    setShowMapPicker(false);
+  };
+
+  useEffect(() => {
+    if (latitude === null || longitude === null) {
       fetchGpsLocation(true);
     }
   }, []);
@@ -238,30 +278,13 @@ export default function ProfileSetupScreen() {
   }, [selectedCity]);
 
   const getInitialCoords = () => {
-    if (pinLocation) {
-      const parts = pinLocation.split(',');
-      if (parts.length === 2) {
-        const lat = parseFloat(parts[0].trim());
-        const lng = parseFloat(parts[1].trim());
-        if (!isNaN(lat) && !isNaN(lng)) {
-          return { lat, lng };
-        }
-      }
+    if (latitude !== null && longitude !== null) {
+      return { lat: latitude, lng: longitude };
     }
     return { lat: 31.5204, lng: 74.3587 }; // Default fallback
   };
 
-  const handleMapMessage = (event: any) => {
-    try {
-      const data = JSON.parse(event.nativeEvent.data);
-      if (data.type === 'LOCATION_SELECTED') {
-        setPinLocation(`${data.lat.toFixed(6)}, ${data.lng.toFixed(6)}`);
-        setShowMapPicker(false);
-      }
-    } catch (err) {
-      console.error('Failed to parse WebView message:', err);
-    }
-  };
+
 
 
 
@@ -309,8 +332,11 @@ export default function ProfileSetupScreen() {
     if (!/^\d+$/.test(zipCode.trim())) {
       throw new Error('Zip code must contain only numbers.');
     }
-    if (!pinLocation.trim()) {
+    if (latitude === null || longitude === null) {
       throw new Error('Pin location / GPS coordinates are required.');
+    }
+    if (!formattedAddress.trim()) {
+      throw new Error('Formatted address is required.');
     }
 
     console.log('[profile-setup] Resolving location chain...');
@@ -320,9 +346,10 @@ export default function ProfileSetupScreen() {
       areaName: area,
       houseNumber: houseNumber.trim(),
       streetNumber: streetNumber.trim(),
-      pinLocation: pinLocation.trim(),
+      latitude: latitude,
+      longitude: longitude,
       zipCode: zipCode.trim(),
-      landmark: landmark.trim(),
+      formatted_address: formattedAddress.trim(),
     });
 
     const locationId = resolvedLoc.id;
@@ -399,8 +426,12 @@ export default function ProfileSetupScreen() {
       setErrorMsg('Zip code must contain only numbers.');
       return;
     }
-    if (!pinLocation.trim()) {
+    if (latitude === null || longitude === null) {
       setErrorMsg('Pin location / GPS coordinates are required.');
+      return;
+    }
+    if (!formattedAddress.trim()) {
+      setErrorMsg('Formatted address is required.');
       return;
     }
 
@@ -620,6 +651,23 @@ export default function ProfileSetupScreen() {
               </View>
             </View>
 
+            {/* Formatted Address (Moved upwards under Area for clean flow) */}
+            <View style={styles.inputWrapper}>
+              <Text style={styles.label}>Formatted Address</Text>
+              <View style={styles.inputFieldContainer}>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="E.g. House 42, Street 3, Phase 5 DHA, Lahore"
+                  placeholderTextColor="#9CA3AF"
+                  value={formattedAddress}
+                  onChangeText={(val) => {
+                    setFormattedAddress(val);
+                    if (errorMsg) setErrorMsg(null);
+                  }}
+                />
+              </View>
+            </View>
+
             {/* House Number */}
             <View style={styles.inputWrapper}>
               <Text style={styles.label}>House Number</Text>
@@ -673,19 +721,23 @@ export default function ProfileSetupScreen() {
               </View>
             </View>
 
-            {/* Pin Location */}
+            {/* Pin Location / GPS Coordinates */}
             <View style={styles.inputWrapper}>
               <Text style={styles.label}>Pin Location / GPS Coordinates</Text>
               <View style={styles.gpsRow}>
                 <TextInput
-                  style={[styles.textInput, styles.inputFieldContainer, { flex: 1 }]}
-                  placeholder="E.g. 31.5204, 74.3587"
+                  style={[styles.textInput, styles.inputFieldContainer, { flex: 1, marginRight: 8, backgroundColor: '#F3F4F6', color: '#4B5563', paddingHorizontal: 8 }]}
+                  placeholder="Lat"
                   placeholderTextColor="#9CA3AF"
-                  value={pinLocation}
-                  onChangeText={(val) => {
-                    setPinLocation(val);
-                    if (errorMsg) setErrorMsg(null);
-                  }}
+                  editable={false}
+                  value={latitude !== null ? latitude.toFixed(6) : ''}
+                />
+                <TextInput
+                  style={[styles.textInput, styles.inputFieldContainer, { flex: 1, marginRight: 8, backgroundColor: '#F3F4F6', color: '#4B5563', paddingHorizontal: 8 }]}
+                  placeholder="Lng"
+                  placeholderTextColor="#9CA3AF"
+                  editable={false}
+                  value={longitude !== null ? longitude.toFixed(6) : ''}
                 />
                 <Pressable
                   style={styles.mapTriggerBtn}
@@ -704,23 +756,6 @@ export default function ProfileSetupScreen() {
                     <Ionicons name="locate-outline" size={20} color="#FFFFFF" />
                   )}
                 </Pressable>
-              </View>
-            </View>
-
-            {/* Nearest Landmark */}
-            <View style={styles.inputWrapper}>
-              <Text style={styles.label}>Nearest Landmark (Optional)</Text>
-              <View style={styles.inputFieldContainer}>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="E.g. Near Al-Fatah supermarket"
-                  placeholderTextColor="#9CA3AF"
-                  value={landmark}
-                  onChangeText={(val) => {
-                    setLandmark(val);
-                    if (errorMsg) setErrorMsg(null);
-                  }}
-                />
               </View>
             </View>
 
@@ -867,25 +902,57 @@ export default function ProfileSetupScreen() {
         </View>
       </KeyboardAvoidingView>
 
-      {/* WebView Map Picker Modal */}
+      {/* WebView Map Picker Modal (Premium Sticky Center Pin Design) */}
       <Modal visible={showMapPicker} animationType="slide" onRequestClose={() => setShowMapPicker(false)}>
         <View style={styles.mapModalContainer}>
-          {/* Header */}
-          <View style={[styles.mapHeader, { paddingTop: Math.max(insets.top, 16) }]}>
-            <Pressable onPress={() => setShowMapPicker(false)} style={styles.mapBackBtn}>
-              <Ionicons name="close" size={24} color="#FFFFFF" />
-            </Pressable>
-            <Text style={styles.mapHeaderTitle}>Select Location on Map</Text>
-            <View style={{ width: 24 }} />
+          {/* Full Screen Adjuster Map */}
+          <WebView
+            ref={mapWebViewRef}
+            style={styles.mapWebview}
+            source={{ html: getLeafletHtml(getInitialCoords().lat, getInitialCoords().lng) }}
+            onMessage={handleMapModalMessage}
+            scrollEnabled={false}
+            overScrollMode="never"
+          />
+
+          {/* Centered marker overlay */}
+          <View style={styles.mapPinContainer} pointerEvents="none">
+            <Ionicons name="location" size={44} color="#EF4444" style={styles.mapPinIcon} />
           </View>
 
-          <WebView
-            style={{ flex: 1 }}
-            originWhitelist={['*']}
-            source={{ html: getLeafletHtml(getInitialCoords().lat, getInitialCoords().lng) }}
-            javaScriptEnabled={true}
-            onMessage={handleMapMessage}
-          />
+          {/* Top Header floating banner (Safe Area Resilient) */}
+          <View style={[styles.mapHeader, { top: insets.top > 0 ? insets.top + 10 : 20 }]}>
+            <Pressable onPress={() => setShowMapPicker(false)} style={styles.mapBackBtn}>
+              <Ionicons name="arrow-back" size={24} color="#111827" />
+            </Pressable>
+            <Text style={styles.mapHeaderTitle}>Select your location</Text>
+            <View style={{ width: 32 }} />
+          </View>
+
+          {/* Floating locate button inside map */}
+          <View style={styles.mapLocateBtn}>
+            <Pressable onPress={reCenterMapPicker} style={styles.mapLocateBtnPressable}>
+              <Ionicons name="locate" size={24} color="#10B981" />
+            </Pressable>
+          </View>
+
+          {/* Bottom address confirmation card */}
+          <View style={[styles.mapBottomCard, { paddingBottom: insets.bottom > 0 ? insets.bottom + 16 : 24 }]}>
+            <Text style={styles.mapCardTitle}>PINPOINT LOCATION</Text>
+            <View style={styles.mapAddressRow}>
+              <Ionicons name="flag" size={20} color="#111827" style={{ marginRight: 10 }} />
+              <Text style={styles.mapAddressText} numberOfLines={2}>
+                {mapAddress || 'Loading address...'}
+              </Text>
+            </View>
+
+            <Pressable
+              style={styles.mapDoneBtn}
+              onPress={confirmSelectedMapLocation}
+            >
+              <Text style={styles.mapDoneBtnText}>Confirm Location</Text>
+            </Pressable>
+          </View>
         </View>
       </Modal>
     </SafeAreaView>
@@ -1185,25 +1252,174 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  mapModalContainer: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  mapHeader: {
-    backgroundColor: '#0B5A3E',
-    paddingBottom: 15,
-    paddingHorizontal: 20,
+  formRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    width: '100%',
+  },
+  gpsControlsRow: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 16,
+    gap: 12,
+  },
+  gpsMapButton: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: '#10B981',
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  gpsLocateButton: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: '#0B5A3E',
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  gpsButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  mapModalContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  mapWebview: {
+    flex: 1,
+  },
+  mapPinContainer: {
+    position: 'absolute',
+    left: '50%',
+    top: '50%',
+    marginLeft: -22,
+    marginTop: -44,
+    zIndex: 3,
+  },
+  mapPinIcon: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  mapHeader: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 5,
+    elevation: 6,
+    zIndex: 5,
   },
   mapBackBtn: {
     padding: 4,
   },
   mapHeaderTitle: {
-    fontSize: 18,
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 14,
     fontWeight: '700',
+    color: '#111827',
+  },
+  mapBottomCard: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 12,
+    zIndex: 5,
+  },
+  mapCardTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#9CA3AF',
+    letterSpacing: 1,
+    marginBottom: 12,
+  },
+  mapAddressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  mapAddressText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+    lineHeight: 20,
+  },
+  mapDoneBtn: {
+    backgroundColor: '#0B5A3E',
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  mapDoneBtnText: {
     color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  mapLocateBtn: {
+    position: 'absolute',
+    right: 16,
+    bottom: 215,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 5,
+    elevation: 6,
+    zIndex: 5,
+  },
+  mapLocateBtnPressable: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   mapTriggerBtn: {
     backgroundColor: '#10B981',

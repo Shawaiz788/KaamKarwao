@@ -87,6 +87,7 @@ export const CATEGORIES = [
   { name: 'Cleaning', icon: 'sparkles', color: '#EAB308' },
   { name: 'Painter', icon: 'brush', color: '#EC4899' },
   { name: 'Mason', icon: 'construct', color: '#EF4444' },
+  { name: 'Other', icon: 'ellipsis-horizontal', color: '#6B7280' },
 ];
 
 const PAYMENT_METHODS = [
@@ -286,11 +287,19 @@ export default function HomeView({ userName }: HomeViewProps) {
         }
 
         // Get last known location instantly, otherwise do a quick balanced fetch (<1s)
-        let loc = await Location.getLastKnownPositionAsync();
+        let loc = null;
+        try {
+          loc = await Promise.race([
+            Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+            new Promise<any>((_, reject) => setTimeout(() => reject(new Error('timeout')), 2500))
+          ]);
+        } catch (e) {
+          console.log('[HomeView] Startup GPS request timed out or failed. Fetching cached position as fallback...');
+          loc = await Location.getLastKnownPositionAsync();
+        }
+
         if (!loc) {
-          loc = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
+          throw new Error('Could not retrieve any coordinate reference.');
         }
 
         const newCoords = {
@@ -317,11 +326,19 @@ export default function HomeView({ userName }: HomeViewProps) {
       setLoadingLocation(true);
 
       // Get last known location instantly, otherwise do a quick balanced fetch (<1s)
-      let loc = await Location.getLastKnownPositionAsync();
+      let loc = null;
+      try {
+        loc = await Promise.race([
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+          new Promise<any>((_, reject) => setTimeout(() => reject(new Error('timeout')), 2500))
+        ]);
+      } catch (e) {
+        console.log('[HomeView] Re-center GPS request timed out or failed. Fetching cached position as fallback...');
+        loc = await Location.getLastKnownPositionAsync();
+      }
+
       if (!loc) {
-        loc = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
+        throw new Error('Re-center failed to fetch location.');
       }
 
       const newCoords = {

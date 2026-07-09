@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Alert } from 'react-native';
+import { useAuth } from './auth';
+import { createTaskChain } from '../../api/task';
 
 export interface Bid {
   id: string;
@@ -22,6 +24,7 @@ export interface Task {
   status: 'searching' | 'bidding' | 'accepted' | 'completed' | 'cancelled';
   acceptedBid?: Bid;
   createdAt: string;
+  backend_id?: number;
 }
 
 export interface ChatMessage {
@@ -64,6 +67,7 @@ const PostJobContext = createContext<PostJobContextType>({
 });
 
 export function PostJobProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [taskHistory, setTaskHistory] = useState<Task[]>([]);
   const [bids, setBids] = useState<Bid[]>([]);
@@ -114,6 +118,46 @@ export function PostJobProvider({ children }: { children: React.ReactNode }) {
     setActiveTask(newTask);
     setBids([]);
     setActiveChatMessages([]);
+
+    const userId = user?.id;
+    const locationId = user?.location_id || user?.location?.id;
+
+    if (userId && locationId) {
+      // Execute backend creation chain in parallel/background
+      (async () => {
+        try {
+          console.log('[PostJobProvider] Dispatching createTaskChain with:', {
+            category,
+            paymentPref,
+            budget,
+            userId,
+            locationId
+          });
+          const createdBackend = await createTaskChain({
+            categoryName: category,
+            paymentMethodId: paymentPref,
+            description: description,
+            budget: budget,
+            userId: userId,
+            locationId: locationId,
+          });
+          console.log('[PostJobProvider] Backend task created successfully. ID:', createdBackend.id);
+          
+          setActiveTask((prev) => {
+            if (!prev || prev.id !== newTask.id) return prev;
+            return {
+              ...prev,
+              backend_id: createdBackend.id,
+            };
+          });
+        } catch (err: any) {
+          console.error('[PostJobProvider] Failed to submit task to backend database:', err);
+          Alert.alert('Server Connection Error', 'Your request has been published locally, but could not be synchronized with the remote backend database.');
+        }
+      })();
+    } else {
+      console.warn('[PostJobProvider] Cannot dispatch backend createTask: missing user ID or profile location ID.');
+    }
 
     if (biddingTimer.current) clearTimeout(biddingTimer.current);
 

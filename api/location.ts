@@ -19,8 +19,9 @@ export interface UserLocation {
   area_id?: number;
   city_id?: number;
   country_id?: number;
-  landmark?: string;
-  pin_location?: string;
+  formatted_address?: string;
+  latitude?: number;
+  longitude?: number;
   zip_code?: number;
 }
 
@@ -73,13 +74,14 @@ export interface LocationChainInput {
   areaName: string;
   houseNumber: string;
   streetNumber: string;
-  pinLocation: string;
+  latitude: number;
+  longitude: number;
   zipCode: string;
-  landmark?: string;
+  formatted_address?: string;
 }
 
 export const getOrCreateLocationChain = async (input: LocationChainInput): Promise<UserLocation> => {
-  const { countryName, cityName, areaName, houseNumber, streetNumber, pinLocation, zipCode, landmark } = input;
+  const { countryName, cityName, areaName, houseNumber, streetNumber, latitude, longitude, zipCode, formatted_address } = input;
   console.log('[LocationChain] Starting resolution for:', input);
 
   // 1. Resolve Country
@@ -141,15 +143,19 @@ export const getOrCreateLocationChain = async (input: LocationChainInput): Promi
   }
 
   // 4. Create User Location
+  const cleanLat = latitude ? Number(latitude.toFixed(6)) : undefined;
+  const cleanLng = longitude ? Number(longitude.toFixed(6)) : undefined;
+
   const locationPayload: UserLocation = {
     country_id: countryId,
     city_id: cityId,
     area_id: areaId,
     house_number: houseNumber ? Number(houseNumber) : undefined,
     street_number: streetNumber,
-    pin_location: pinLocation,
+    latitude: cleanLat,
+    longitude: cleanLng,
     zip_code: zipCode ? Number(zipCode) : undefined,
-    landmark,
+    formatted_address,
   };
 
   console.log('[LocationChain] Creating Location with payload:', locationPayload);
