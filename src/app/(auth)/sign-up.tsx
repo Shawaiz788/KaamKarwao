@@ -76,6 +76,7 @@ export default function SignUpScreen() {
             
             const confirmation = await signInWithPhoneNumber(auth, formattedPhone);
             await SecureStore.setItemAsync('pending_signup_password', data.password);
+            console.log('[SecureStore] Saved pending signup password');
             router.push({
                 pathname: '/verify',
                 params: {

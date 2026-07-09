@@ -335,8 +335,6 @@ export default function HomeView({ userName }: HomeViewProps) {
           });
         }
 
-        console.log('[GPS] Fast fix:', loc.coords.latitude, loc.coords.longitude, 'accuracy:', loc.coords.accuracy, 'm');
-
         const newCoords = {
           latitude: loc.coords.latitude,
           longitude: loc.coords.longitude,
@@ -604,6 +602,21 @@ export default function HomeView({ userName }: HomeViewProps) {
     }
   }, [activeTask?.id]);
 
+  // Dynamic styles extracted to render calculations (best practice)
+  const activeTaskBannerStyle = [
+    styles.activeTaskBanner,
+    { top: insets.top > 0 ? insets.top + 15 : 25 }
+  ];
+
+  const bottomSheetStyle = [
+    styles.bottomSheet,
+    {
+      transform: [{ translateY: sheetTranslateY }],
+      bottom: keyboardHeight,
+      paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 16
+    }
+  ];
+
   return (
     <View style={styles.container}>
       {/* 1. MAP BACKGROUND (PREMIUM WEBVIEW WITH CARTODB POSITRON) */}
@@ -663,7 +676,7 @@ export default function HomeView({ userName }: HomeViewProps) {
       {/* 4. FLOATING ACTIVE TASK FEEDBACK BAR */}
       {activeTask && !viewActiveTaskScreen && (
         <Pressable
-          style={[styles.activeTaskBanner, { top: insets.top > 0 ? insets.top + 15 : 25 }]}
+          style={activeTaskBannerStyle}
           onPress={() => setViewActiveTaskScreen(true)}
         >
           <View style={styles.bannerIndicator} />
@@ -672,18 +685,13 @@ export default function HomeView({ userName }: HomeViewProps) {
           </Text>
           <Ionicons name="chevron-forward" size={16} color="#10B981" style={{ marginLeft: 8 }} />
         </Pressable>
-      )}      {/* 5. BOTTOM CONTROL SHEET (ANIMATED COLLAPSIBLE) */}
-      <Animated.View style={[
-        styles.bottomSheet, 
-        { 
-          transform: [{ translateY: sheetTranslateY }],
-          bottom: keyboardHeight, // Dynamically shift above the keyboard
-          paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 16 
-        }
-      ]}>
+      )}
+
+      {/* 5. BOTTOM CONTROL SHEET (ANIMATED COLLAPSIBLE) */}
+      <Animated.View style={bottomSheetStyle}>
         {/* Interactive Drag Handle Area (Tappable and Swipeable) */}
-        <View 
-          style={styles.sheetHandleContainer} 
+        <View
+          style={styles.sheetHandleContainer}
           {...panResponder.panHandlers}
         >
           <View style={styles.sheetHandle} />
@@ -813,6 +821,13 @@ export default function HomeView({ userName }: HomeViewProps) {
           <View style={styles.drawerVerifiedBadge}>
             <Ionicons name="checkmark-circle" size={14} color="#10B981" style={{ marginRight: 4 }} />
             <Text style={styles.drawerVerifiedLabel}>Verified User</Text>
+          </View>
+
+          {/* User Rating Pill */}
+          <View style={styles.drawerRatingContainer}>
+            <Ionicons name="star" size={13} color="#F59E0B" style={{ marginRight: 4 }} />
+            <Text style={styles.drawerRatingValue}>4.9</Text>
+            <Text style={styles.drawerRatingCount}>• 28 Tasks</Text>
           </View>
         </View>
 
@@ -1281,8 +1296,8 @@ const styles = StyleSheet.create({
     borderColor: '#F3F4F6',
     borderRadius: 12,
     height: 42,
-    paddingHorizontal: 12,
-    flex: 0.44,
+    paddingHorizontal: 8,
+    flex: 0.35,
   },
   currencyPrefix: {
     fontSize: 13,
@@ -1302,7 +1317,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     height: 42,
     padding: 3,
-    flex: 0.54,
+    flex: 0.63,
     gap: 6, // Increased gap for a cleaner separation of options
   },
   paymentBtn: {
@@ -1428,9 +1443,29 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   drawerVerifiedLabel: {
-    color: '#34D399',
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#34D399',
+  },
+  drawerRatingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 12,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    marginTop: 8,
+  },
+  drawerRatingValue: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  drawerRatingCount: {
+    fontSize: 10,
+    color: '#D1FAE5',
+    marginLeft: 4,
+    fontWeight: '500',
   },
   drawerItemsContainer: {
     padding: 16,

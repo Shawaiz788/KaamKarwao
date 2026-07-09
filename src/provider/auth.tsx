@@ -25,9 +25,9 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
     user: null,
     initializing: true,
-    login: async () => {},
-    logout: async () => {},
-    reloadUser: async () => {},
+    login: async () => { },
+    logout: async () => { },
+    reloadUser: async () => { },
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -37,6 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const loadSession = async () => {
         try {
             const sessionStr = await SecureStore.getItemAsync('user_session');
+            console.log('[SecureStore] Loaded user session string:', sessionStr);
             if (sessionStr) {
                 const sessionUser = JSON.parse(sessionStr);
                 setUser(sessionUser);
@@ -56,7 +57,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const login = async (appUser: AppUser) => {
         try {
-            await SecureStore.setItemAsync('user_session', JSON.stringify(appUser));
+            await SecureStore.setItemAsync('user_session', JSON.stringify(appUser, null, 4));
+            console.log('[SecureStore] Saved user session:', appUser);
             setUser(appUser);
         } catch (e) {
             console.error('Error saving user session:', e);
@@ -67,6 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const logout = async () => {
         try {
             await SecureStore.deleteItemAsync('user_session');
+            console.log('[SecureStore] Deleted user session from device');
             setUser(null);
         } catch (e) {
             console.error('Error clearing user session:', e);

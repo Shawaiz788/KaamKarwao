@@ -94,19 +94,29 @@ export default function ActiveTaskScreen({ onBack }: ActiveTaskScreenProps) {
     setChatInput('');
   };
 
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['top', 'bottom']}>
-      <View style={styles.container}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top > 0 ? insets.top + 10 : 20 }]}>
-        <Pressable onPress={onBack} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#111827" />
-        </Pressable>
-        <Text style={styles.headerTitle}>Task Status</Text>
-        <View style={{ width: 24 }} />
-      </View>
+  const chatHeaderStyle = [
+    styles.modalHeader,
+    { paddingTop: insets.top > 0 ? insets.top + 5 : 15 }
+  ];
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+  const chatInputStyle = [
+    styles.inputBar,
+    { paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 10 }
+  ];
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Pressable onPress={onBack} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={24} color="#111827" />
+          </Pressable>
+          <Text style={styles.headerTitle}>Task Status</Text>
+          <View style={{ width: 24 }} />
+        </View>
+
+        <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Task Summary Card */}
         <View style={styles.taskSummaryCard}>
           <View style={styles.summaryHeader}>
@@ -255,7 +265,7 @@ export default function ActiveTaskScreen({ onBack }: ActiveTaskScreenProps) {
       </ScrollView>
 
       {/* Cancel Button */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 16 }]}>
+      <View style={styles.footer}>
         <Pressable style={styles.cancelBtn} onPress={cancelTask}>
           <Text style={styles.cancelBtnText}>Cancel Job Request</Text>
         </Pressable>
@@ -273,7 +283,7 @@ export default function ActiveTaskScreen({ onBack }: ActiveTaskScreenProps) {
             style={styles.chatRoomContainer}
           >
             {/* Chat Modal Header */}
-            <View style={[styles.modalHeader, { paddingTop: insets.top > 0 ? insets.top + 5 : 15 }]}>
+            <View style={chatHeaderStyle}>
               <Pressable onPress={() => setChatVisible(false)} style={styles.modalBackBtn}>
                 <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
               </Pressable>
@@ -328,7 +338,7 @@ export default function ActiveTaskScreen({ onBack }: ActiveTaskScreenProps) {
             </ScrollView>
 
             {/* Input Bar */}
-            <View style={[styles.inputBar, { paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 10 }]}>
+            <View style={chatInputStyle}>
               <TextInput
                 style={styles.inputField}
                 placeholder="Type a message..."
@@ -356,6 +366,10 @@ export default function ActiveTaskScreen({ onBack }: ActiveTaskScreenProps) {
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFFFFF', // Clean status bar color
+  },
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
@@ -369,7 +383,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingTop: 10,
+    paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
@@ -384,7 +399,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 100,
+    paddingBottom: 24, // Normal flow padding bottom
   },
   taskSummaryCard: {
     backgroundColor: '#FFFFFF',
@@ -708,10 +723,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     padding: 16,
     backgroundColor: '#F9FAFB',
     borderTopWidth: 1,
@@ -748,13 +759,19 @@ const styles = StyleSheet.create({
   },
 
   // Modal styling
+  chatModalHeaderContainer: {
+    backgroundColor: '#082C18',
+  },
+  chatInputContainer: {
+    backgroundColor: '#FFFFFF',
+  },
   chatRoomContainer: {
     flex: 1,
     backgroundColor: '#F3F4F6',
   },
   modalHeader: {
     backgroundColor: '#082C18',
-    paddingBottom: 15,
+    paddingVertical: 12,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',

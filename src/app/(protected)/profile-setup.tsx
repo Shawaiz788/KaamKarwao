@@ -332,6 +332,7 @@ export default function ProfileSetupScreen() {
     console.log('[profile-setup] Resolved Location ID:', locationId);
 
     const savedPassword = await SecureStore.getItemAsync('pending_signup_password');
+    console.log('[SecureStore] Loaded pending signup password string length:', savedPassword ? savedPassword.length : 0);
     const passwordToUse = savedPassword || (params.password as string);
 
     const newUser = {
@@ -413,6 +414,7 @@ export default function ProfileSetupScreen() {
 
       // Clean up the temporary password storage
       await SecureStore.deleteItemAsync('pending_signup_password');
+      console.log('[SecureStore] Deleted pending signup password');
 
       // Update local session
       if (createdUser && user) {
