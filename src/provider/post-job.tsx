@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { Alert } from 'react-native';
 import { useAuth } from './auth';
 import { createTaskChain } from '../../api/task';
+import useTaskStore from '../store/taskStore';
 
 export interface Bid {
   id: string;
@@ -77,10 +78,12 @@ const PostJobContext = createContext<PostJobContextType>({
 export function PostJobProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
-  const [taskHistory, setTaskHistory] = useState<Task[]>([]);
   const [bids, setBids] = useState<Bid[]>([]);
   const [activeChatMessages, setActiveChatMessages] = useState<ChatMessage[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  // Persistent task history store from MMKV + Zustand
+  const { taskHistory, addTaskToHistory, clearHistory: clearTaskStoreHistory } = useTaskStore();
 
   const biddingTimer = useRef<NodeJS.Timeout | null>(null);
   const chatGreetingTimer = useRef<NodeJS.Timeout | null>(null);
@@ -126,6 +129,7 @@ export function PostJobProvider({ children }: { children: React.ReactNode }) {
     };
 
     setActiveTask(newTask);
+    addTaskToHistory(newTask);
     setBids([]);
     setActiveChatMessages([]);
 
@@ -157,10 +161,12 @@ export function PostJobProvider({ children }: { children: React.ReactNode }) {
 
           setActiveTask((prev) => {
             if (!prev || prev.id !== newTask.id) return prev;
-            return {
+            const updated = {
               ...prev,
               backend_id: createdBackend.id,
             };
+            addTaskToHistory(updated);
+            return updated;
           });
         } catch (err: any) {
           console.error('[PostJobProvider] Failed to submit task to backend database:', err);
@@ -177,7 +183,9 @@ export function PostJobProvider({ children }: { children: React.ReactNode }) {
     biddingTimer.current = setTimeout(() => {
       setActiveTask((prev) => {
         if (!prev || prev.id !== newTask.id) return prev;
-        return { ...prev, status: 'bidding' };
+        const updated = { ...prev, status: 'bidding' as const };
+        addTaskToHistory(updated);
+        return updated;
       });
 
       const mockBids: Bid[] = [
@@ -219,7 +227,7 @@ export function PostJobProvider({ children }: { children: React.ReactNode }) {
   const cancelTask = () => {
     if (activeTask) {
       const cancelledTask: Task = { ...activeTask, status: 'cancelled' };
-      setTaskHistory((prev) => [cancelledTask, ...prev]);
+      addTaskToHistory(cancelledTask);
     }
     setActiveTask(null);
     setBids([]);
@@ -235,11 +243,13 @@ export function PostJobProvider({ children }: { children: React.ReactNode }) {
 
     setActiveTask((prev) => {
       if (!prev) return null;
-      return {
+      const updated = {
         ...prev,
-        status: 'accepted',
+        status: 'accepted' as const,
         acceptedBid: chosenBid,
       };
+      addTaskToHistory(updated);
+      return updated;
     });
 
     // Start greeting after 2 seconds
@@ -258,7 +268,7 @@ export function PostJobProvider({ children }: { children: React.ReactNode }) {
   const completeTask = () => {
     if (activeTask) {
       const completedTask: Task = { ...activeTask, status: 'completed' };
-      setTaskHistory((prev) => [completedTask, ...prev]);
+      addTaskToHistory(completedTask);
       Alert.alert('Task Completed', 'The task has been marked as completed successfully!');
     }
     setActiveTask(null);
@@ -302,7 +312,7 @@ export function PostJobProvider({ children }: { children: React.ReactNode }) {
   };
 
   const clearHistory = () => {
-    setTaskHistory([]);
+    clearTaskStoreHistory();
   };
 
   return (
