@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../provider/auth';
 import { usePostJob, Task } from '../../provider/post-job';
 import ActiveTaskScreen from './ActiveTaskScreen';
@@ -36,11 +37,11 @@ const DEFAULT_HEIGHT = 420;
 const COLLAPSED_HEIGHT = 130;
 
 const MOCK_IMAGES = [
-  'https://images.unsplash.com/photo-1581094288338-2314dddb7ecc?w=150',
-  'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=150',
-  'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=150',
-  'https://images.unsplash.com/photo-1595841696660-ab619143309d?w=150',
-  'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=150',
+  'https://picsum.photos/300?random=1',
+  'https://picsum.photos/300?random=2',
+  'https://picsum.photos/300?random=3',
+  'https://picsum.photos/300?random=4',
+  'https://picsum.photos/300?random=5',
 ];
 
 interface HomeViewProps {
@@ -674,7 +675,8 @@ export default function HomeView({ userName }: HomeViewProps) {
       return;
     }
 
-    createTask(activeCategory, description, Number(budget), address, paymentPref);
+    const attachmentUris = attachments.map(item => item.uri);
+    createTask(activeCategory, description, Number(budget), address, paymentPref, attachmentUris);
     setViewActiveTaskScreen(true);
 
     // Clear inputs for next time
@@ -683,22 +685,46 @@ export default function HomeView({ userName }: HomeViewProps) {
     setAttachments([]);
   };
 
-  const handleAddAttachment = () => {
+  const handleAddAttachment = async () => {
     if (attachments.length >= 5) {
       Alert.alert('Limit Reached', 'You can attach up to 5 images only.');
       return;
     }
-    const newId = Math.random().toString();
-    const newUri = MOCK_IMAGES[attachments.length % MOCK_IMAGES.length];
 
-    setAttachments(prev => [...prev, { id: newId, uri: newUri, uploading: true }]);
+    // 1. Request permissions to access the media library
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'Gallery permissions are required to attach images.');
+      return;
+    }
 
-    // Simulate upload completion after 1.5s
-    setTimeout(() => {
-      setAttachments(prev =>
-        prev.map(item => item.id === newId ? { ...item, uploading: false } : item)
-      );
-    }, 1500);
+    // 2. Open gallery picker UI
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsMultipleSelection: true,
+      selectionLimit: 5 - attachments.length,
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const newAttachments = result.assets.map(asset => ({
+        id: Math.random().toString(),
+        uri: asset.uri,
+        uploading: true,
+      }));
+
+      // Set the attachment local file paths in state with upload animation
+      setAttachments(prev => [...prev, ...newAttachments]);
+
+      // Simulate network request upload latency (1.5 seconds) for each photo
+      newAttachments.forEach((newAsset) => {
+        setTimeout(() => {
+          setAttachments(prev =>
+            prev.map(item => item.id === newAsset.id ? { ...item, uploading: false } : item)
+          );
+        }, 1500);
+      });
+    }
   };
 
   const handleRemoveAttachment = (id: string) => {
@@ -784,7 +810,7 @@ export default function HomeView({ userName }: HomeViewProps) {
         {/* 2. MAP OVERLAY PIN IN MIDDLE */}
         {!loadingLocation && initialCoords && (
           <View style={styles.centerMarkerContainer} pointerEvents="none">
-            <Ionicons name="location" size={40} color="#EF4444" style={styles.pinIcon} />
+            <Ionicons name="pin" size={40} color="#EF4444" style={styles.pinIcon} />
           </View>
         )}
       </View>

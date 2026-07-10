@@ -15,7 +15,6 @@ export interface Task {
   id?: number;
   subject: string;
   body: string;
-  attachment_id: number | null;
   price: number;
   created_by: number;
   preferred_time: string;
@@ -33,7 +32,58 @@ export interface TaskChainInput {
   budget: number;
   userId: number;
   locationId: number;
+  attachmentUris?: string[] | null;
 }
+
+// Upload file to backend attachment endpoint using multipart/form-data, linking it to taskId
+export const uploadAttachment = async (uri: string, taskId: number): Promise<number> => {
+  console.log(`[task API] Uploading attachment from uri: ${uri} for Task ID: ${taskId}`);
+  
+  // 1. Create a FormData instance
+  const formData = new FormData();
+  
+  // 2. Extract name and mime type from uri
+  const filename = uri.split('/').pop() || 'photo.jpg';
+  const match = /\.(\w+)$/.exec(filename);
+  const type = match ? `image/${match[1]}` : `image/jpeg`;
+  
+  // 3. Append the file details using the format React Native expects for blobs/files
+  formData.append('file', {
+    uri,
+    name: filename,
+    type,
+  } as any);
+
+  // Append task relationship fields so backend registers this attachment to the task
+  formData.append('task_id', taskId.toString());
+  formData.append('task', taskId.toString());
+
+  // 4. Dispatch multipart fetch request
+  const response = await fetch(`${API_URL}/attachment/`, {
+    method: 'POST',
+    body: formData,
+    headers: {
+      // NOTE: Do NOT set Content-Type manually. Fetch will automatically set
+      // multipart/form-data along with the boundary string.
+      'Accept': 'application/json',
+    },
+  });
+
+  const responseText = await response.text();
+  console.log('[task API] Upload attachment response status:', response.status);
+  console.log('[task API] Upload attachment response body:', responseText);
+
+  if (!response.ok) {
+    throw new Error(`Failed to upload attachment. Status: ${response.status}. Response: ${responseText}`);
+  }
+
+  try {
+    const data = JSON.parse(responseText);
+    return data.id; // Return the attachment's database ID
+  } catch (e) {
+    throw new Error(`Failed to parse attachment upload response. Content: ${responseText}`);
+  }
+};
 
 // Fetch categories list
 export const getCategoriesFromBackend = async (): Promise<Category[]> => {
@@ -92,10 +142,11 @@ export const createTask = async (task: Omit<Task, 'id'>): Promise<Task> => {
 // Sequential task creation chain:
 // 1. Match category ID
 // 2. Match payment preference ID
-// 3. Assemble inputs (subject, timestamps, location details)
-// 4. Send request to endpoint
+// 3. Upload attachment (if any) to get attachment_id
+// 4. Assemble inputs (subject, timestamps, location details)
+// 5. Send request to endpoint
 export const createTaskChain = async (input: TaskChainInput): Promise<Task> => {
-  const { categoryName, paymentMethodId, description, budget, userId, locationId } = input;
+  const { categoryName, paymentMethodId, description, budget, userId, locationId, attachmentUris } = input;
   console.log('[createTaskChain] Resolving task creation sequence...', input);
 
   // 1. Get Category ID from backend
@@ -140,11 +191,10 @@ export const createTaskChain = async (input: TaskChainInput): Promise<Task> => {
   // 4. Construct timestamp
   const preferredTime = new Date().toISOString();
 
-  // 5. Dispatch task
+  // 5. Dispatch task first (so we obtain its database ID)
   const taskPayload = {
     subject,
     body: description,
-    attachment_id: null,
     price: budget,
     created_by: userId,
     preferred_time: preferredTime,
@@ -152,8 +202,26 @@ export const createTaskChain = async (input: TaskChainInput): Promise<Task> => {
     status_id: 1, // Default status id is 1
     payment_preference_id: paymentPreferenceId,
     accurately_estimated: 0, // Default accurately_estimated
-    category_id: categoryId, // Backend uses Django spelling: catergory_id
+    category_id: categoryId,
   };
 
-  return await createTask(taskPayload);
+  const createdTask = await createTask(taskPayload);
+  console.log(`[createTaskChain] Task created with ID: ${createdTask.id}. Now starting attachments upload...`);
+
+  // 6. Upload multiple attachments to backend (now linked to task ID)
+  if (attachmentUris && attachmentUris.length > 0 && createdTask.id) {
+    const uploadPromises = attachmentUris.map(async (uri) => {
+      try {
+        const uploadResultId = await uploadAttachment(uri, createdTask.id!);
+        console.log(`[createTaskChain] Attachment uploaded successfully with ID: ${uploadResultId} for Task ID: ${createdTask.id}`);
+      } catch (err) {
+        console.error(`[createTaskChain] Attachment upload failed for uri: ${uri}.`, err);
+      }
+    });
+
+    // Run parallel uploads
+    await Promise.all(uploadPromises);
+  }
+
+  return createdTask;
 };

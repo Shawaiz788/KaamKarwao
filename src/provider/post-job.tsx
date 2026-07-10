@@ -25,6 +25,7 @@ export interface Task {
   acceptedBid?: Bid;
   createdAt: string;
   backend_id?: number;
+  attachmentUris?: string[] | null;
 }
 
 export interface ChatMessage {
@@ -40,7 +41,14 @@ interface PostJobContextType {
   bids: Bid[];
   activeChatMessages: ChatMessage[];
   selectedCategory: string | null;
-  createTask: (category: string, description: string, budget: number, locationName: string, paymentPref: string) => void;
+  createTask: (
+    category: string,
+    description: string,
+    budget: number,
+    locationName: string,
+    paymentPref: string,
+    attachmentUris?: string[] | null
+  ) => void;
   cancelTask: () => void;
   acceptBid: (bidId: string) => void;
   completeTask: () => void;
@@ -102,7 +110,8 @@ export function PostJobProvider({ children }: { children: React.ReactNode }) {
     description: string,
     budget: number,
     locationName: string,
-    paymentPref: string
+    paymentPref: string,
+    attachmentUris?: string[] | null
   ) => {
     const newTask: Task = {
       id: Date.now().toString(),
@@ -113,6 +122,7 @@ export function PostJobProvider({ children }: { children: React.ReactNode }) {
       paymentPref,
       status: 'searching',
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      attachmentUris,
     };
 
     setActiveTask(newTask);
@@ -131,7 +141,8 @@ export function PostJobProvider({ children }: { children: React.ReactNode }) {
             paymentPref,
             budget,
             userId,
-            locationId
+            locationId,
+            attachmentUris,
           });
           const createdBackend = await createTaskChain({
             categoryName: category,
@@ -140,6 +151,7 @@ export function PostJobProvider({ children }: { children: React.ReactNode }) {
             budget: budget,
             userId: userId,
             locationId: locationId,
+            attachmentUris: attachmentUris,
           });
           console.log('[PostJobProvider] Backend task created successfully. ID:', createdBackend.id);
 
