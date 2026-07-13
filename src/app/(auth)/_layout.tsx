@@ -1,6 +1,7 @@
 import { Redirect, Stack } from 'expo-router';
-import { useAuth } from '../../provider/auth'; // Import your custom hook
+import { useAuth } from '../../provider/auth';
 import { View, ActivityIndicator } from 'react-native';
+import { USER_TYPE_PRO } from '../../constants/userTypes';
 
 export default function AuthLayout() {
     const { user, initializing } = useAuth();
@@ -16,9 +17,12 @@ export default function AuthLayout() {
     if (user) {
         const isProfileIncomplete = !user.displayName;
         if (isProfileIncomplete) {
-            return <Redirect href={'/profile-setup'} />;
+            return <Redirect href={'/(protected)/profile-setup'} />;
         }
-        return <Redirect href={'/home'} />;
+        if (user.usertype_id === USER_TYPE_PRO) {
+            return <Redirect href={'/(protected)/(pro)/dashboard'} />;
+        }
+        return <Redirect href={'/(protected)/(client)/home'} />;
     }
 
     return (

@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { loginUser } from '../../../api/user';
 import { useAuth } from '../../provider/auth';
+import { USER_TYPE_PRO } from '../../constants/userTypes';
 
 const signInSchema = z.object({
     phone: z
@@ -84,8 +85,12 @@ export default function SignInScreen() {
 
             await login(appUser);
 
-            // Redirect directly to home screen
-            router.replace('/home');
+            // Redirect based on user type
+            if (appUser.usertype_id === USER_TYPE_PRO) {
+                router.replace('/(protected)/(pro)/dashboard');
+            } else {
+                router.replace('/(protected)/(client)/home');
+            }
         } catch (err: any) {
             console.log('Sign in error: ', err);
             setError('root', { message: err.message || 'An error occurred signing in' });

@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../provider/auth'; // Updated import
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { USER_TYPE_PRO } from '../constants/userTypes';
 const { width } = Dimensions.get('window');
 
 export default function WelcomeScreen() {
@@ -26,19 +27,23 @@ export default function WelcomeScreen() {
       const isProfileIncomplete = !user.displayName;
       if (isProfileIncomplete) {
         router.replace('/profile-setup');
+      } else if (user.usertype_id === USER_TYPE_PRO) {
+        router.replace('/(protected)/(pro)/dashboard');
       } else {
-        router.replace('/home');
+        router.replace('/(protected)/(client)/home');
       }
     }
   }, [user]);
 
   const handleContinue = () => {
-    if (user) { // Check user presence
+    if (user) {
       const isProfileIncomplete = !user.displayName;
       if (isProfileIncomplete) {
         router.replace('/profile-setup');
+      } else if (user.usertype_id === USER_TYPE_PRO) {
+        router.replace('/(protected)/(pro)/dashboard');
       } else {
-        router.replace('/home');
+        router.replace('/(protected)/(client)/home');
       }
     } else {
       router.push('/onboardings');

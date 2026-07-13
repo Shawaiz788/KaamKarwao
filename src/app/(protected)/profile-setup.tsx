@@ -24,6 +24,7 @@ import { City, getCities, getOrCreateLocationChain } from '../../../api/location
 import { COUNTRY_DATA, getCountryFromPhone } from '../../constants/locationData';
 import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
+import { USER_TYPE_PRO } from '../../constants/userTypes';
 
 type Role = 'client' | 'provider';
 
@@ -476,7 +477,12 @@ export default function ProfileSetupScreen() {
       });
 
       console.log('Profile setup saved successfully!');
-      router.replace('/home');
+      // Route based on user type
+      if (createdUser && createdUser.usertype_id === USER_TYPE_PRO) {
+        router.replace('/(protected)/(pro)/dashboard');
+      } else {
+        router.replace('/(protected)/(client)/home');
+      }
     } catch (err: any) {
       console.error('[profile-setup] Profile setup failed:', err);
       setErrorMsg(err?.message || 'Failed to save profile. Please try again.');
