@@ -101,3 +101,35 @@ export const loginUser = async (phone_number: string, password: string): Promise
         throw new Error(`Failed to parse login response as JSON. Error: ${e.message}. Content: ${responseText}`);
     }
 };
+
+// Verify user account on backend using their user ID and optional JWT access token
+export const verifyUserOnBackend = async (userId: number, token?: string): Promise<any> => {
+    const url = `${API_URL}/app/${userId}/verify/`;
+    console.log('[verifyUserOnBackend] Verifying account via URL:', url);
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+    };
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({}),
+    });
+
+    const responseText = await response.text();
+    console.log('[verifyUserOnBackend] Response Status:', response.status);
+    console.log('[verifyUserOnBackend] Response Body:', responseText);
+
+    if (!response.ok) {
+        throw new Error(`Verification failed on backend. Status: ${response.status}. Response: ${responseText}`);
+    }
+
+    try {
+        return responseText ? JSON.parse(responseText) : {};
+    } catch (e) {
+        return { message: responseText };
+    }
+};

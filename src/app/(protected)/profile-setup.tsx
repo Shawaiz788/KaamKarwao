@@ -18,7 +18,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '../../provider/auth';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { createUser } from '../../../api/user';
+import { createUser, verifyUserOnBackend, loginUser } from '../../../api/user';
 import { useMutation } from '@tanstack/react-query';
 import { City, getCities, getOrCreateLocationChain } from '../../../api/location';
 import { COUNTRY_DATA, getCountryFromPhone } from '../../constants/locationData';
@@ -444,14 +444,43 @@ export default function ProfileSetupScreen() {
       console.log('[profile-setup] Starting CreateUser chain...');
       const createdUser = await CreateUser();
 
+      // Retrieve the pending signup password before it gets deleted from SecureStore
+      const savedPassword = await SecureStore.getItemAsync('pending_signup_password');
+      const passwordToUse = savedPassword || (params.password as string);
+
       // Clean up the temporary password storage
       await SecureStore.deleteItemAsync('pending_signup_password');
       console.log('[SecureStore] Deleted pending signup password');
 
       // Update local session
       if (createdUser && user) {
-        // Extract JWT access token from response payload
-        const token = (createdUser as any).access || (createdUser as any).access_token || (createdUser as any).token;
+        // Extract JWT access and refresh tokens from response payload if present
+        let token = (createdUser as any).access || (createdUser as any).access_token || (createdUser as any).token;
+        let refreshToken = (createdUser as any).refresh || (createdUser as any).refresh_token;
+
+        // If the registration endpoint didn't return a JWT token (common), log the user in programmatically to get one
+        if (!token && createdUser.phone_number && passwordToUse) {
+          try {
+            console.log('[profile-setup] Registration did not return a JWT token. Programmatically logging in...');
+            const loginInfo = await loginUser(createdUser.phone_number, passwordToUse);
+            token = (loginInfo as any).access || (loginInfo as any).access_token || (loginInfo as any).token;
+            refreshToken = (loginInfo as any).refresh || (loginInfo as any).refresh_token;
+            console.log('[profile-setup] Programmatic login complete. Token obtained.');
+          } catch (loginErr) {
+            console.error('[profile-setup] Programmatic login failed:', loginErr);
+          }
+        }
+
+        // Automatically verify user account on the backend using the user ID and JWT token
+        if (createdUser && createdUser.id) {
+          try {
+            console.log(`[profile-setup] Auto-verifying new account on backend for User ID: ${createdUser.id}...`);
+            await verifyUserOnBackend(createdUser.id, token);
+            console.log('[profile-setup] Backend verification complete!');
+          } catch (verifyErr) {
+            console.error('[profile-setup] Auto-verification on backend failed:', verifyErr);
+          }
+        }
 
         const appUser = {
           uid: createdUser.id?.toString() || user.uid,
@@ -465,6 +494,7 @@ export default function ProfileSetupScreen() {
           usertype_id: createdUser.usertype_id,
           location_id: createdUser.location_id,
           token: token, // Attach JWT token
+          refreshToken: refreshToken, // Attach JWT refresh token
         };
         await login(appUser);
       }

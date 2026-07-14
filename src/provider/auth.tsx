@@ -15,6 +15,7 @@ export interface AppUser {
     location_id: number;
     location?: UserLocation;
     token?: string; // Optional JWT token
+    refreshToken?: string; // Optional JWT refresh token
 }
 
 interface AuthContextType {
@@ -60,10 +61,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const login = async (appUser: AppUser) => {
         try {
-            // Save the JWT token separately if present in the user payload
+            // Save the JWT access token and saved timestamp separately if present
             if (appUser.token) {
                 await SecureStore.setItemAsync('user_token', appUser.token);
-                console.log('[SecureStore] Saved user JWT token');
+                await SecureStore.setItemAsync('user_token_saved_at', Date.now().toString());
+                console.log('[SecureStore] Saved user JWT access token and timestamp');
+            }
+            // Save the JWT refresh token separately if present
+            if (appUser.refreshToken) {
+                await SecureStore.setItemAsync('user_refresh_token', appUser.refreshToken);
+                console.log('[SecureStore] Saved user JWT refresh token');
             }
             await SecureStore.setItemAsync('user_session', JSON.stringify(appUser, null, 4));
             console.log('[SecureStore] Saved user session:', appUser);
@@ -78,7 +85,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
             await SecureStore.deleteItemAsync('user_session');
             await SecureStore.deleteItemAsync('user_token');
-            console.log('[SecureStore] Deleted user session and JWT token from device');
+            await SecureStore.deleteItemAsync('user_refresh_token');
+            await SecureStore.deleteItemAsync('user_token_saved_at');
+            console.log('[SecureStore] Deleted user session, tokens, and timestamp from device');
             setUser(null);
         } catch (e) {
             console.error('Error clearing user session:', e);

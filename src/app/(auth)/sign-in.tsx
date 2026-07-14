@@ -65,8 +65,9 @@ export default function SignInScreen() {
             const userInfo = await loginUser(formattedPhone, data.password);
             console.log('[SignIn] Login successful. User info:', userInfo);
 
-            // Extract JWT access token from response payload
+            // Extract JWT access and refresh tokens from response payload
             const token = (userInfo as any).access || (userInfo as any).access_token || (userInfo as any).token;
+            const refreshToken = (userInfo as any).refresh || (userInfo as any).refresh_token;
 
             // Extract the user data (handle both nested {user: {...}} and flat {...} structures)
             const userDetails = (userInfo as any).user || userInfo;
@@ -88,6 +89,7 @@ export default function SignInScreen() {
                 usertype_id: userDetails.usertype_id,
                 location_id: userDetails.location_id,
                 token: token, // Attach JWT token
+                refreshToken: refreshToken, // Attach JWT refresh token
             };
 
             await login(appUser);
