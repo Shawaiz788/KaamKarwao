@@ -522,7 +522,21 @@ export default function ProfileSetupScreen() {
       let friendlyMsg = 'Failed to save profile. Please try again.';
       const rawMsg = err?.message || '';
 
-      if (rawMsg.includes('Status: 5') || rawMsg.includes('500') || rawMsg.includes('504') || rawMsg.includes('502')) {
+      if (
+        rawMsg.includes('timed out') ||
+        rawMsg.includes('not responding') ||
+        rawMsg.includes('connection error') ||
+        rawMsg.includes('could not be reached')
+      ) {
+        friendlyMsg = rawMsg;
+      } else if (
+        rawMsg.includes('Status: 5') ||
+        rawMsg.includes('500') ||
+        rawMsg.includes('504') ||
+        rawMsg.includes('502') ||
+        rawMsg.includes('5xx') ||
+        rawMsg.includes('temporarily busy')
+      ) {
         friendlyMsg = 'The server is temporarily busy. Please try again in a few moments.';
       } else if (rawMsg.includes('Failed to create user') || rawMsg.includes('Status:') || rawMsg.includes('Response:')) {
         friendlyMsg = 'Registration failed. The email or phone number might already be in use.';

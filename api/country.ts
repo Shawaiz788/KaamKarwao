@@ -1,5 +1,6 @@
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 const API_URL = BASE_URL ? BASE_URL.replace(/\/$/, '') : '';
+import { fetchWithTimeout } from './fetchClient';
 
 export interface Country {
     id: number;
@@ -7,12 +8,12 @@ export interface Country {
 }
 
 export const getCountries = async (): Promise<Country[]> => {
-    const response = await fetch(`${API_URL}/countries/`);
+    const response = await fetchWithTimeout(`${API_URL}/countries/`);
     return response.json();
 };
 
 export const createCountry = async (name: string): Promise<Country> => {
-    const response = await fetch(`${API_URL}/countries/`, {
+    const response = await fetchWithTimeout(`${API_URL}/countries/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

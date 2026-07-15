@@ -1,5 +1,6 @@
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 const API_URL = BASE_URL ? BASE_URL.replace(/\/$/, '') : '';
+import { fetchWithTimeout } from './fetchClient';
 
 export interface Area {
     id: number;
@@ -7,7 +8,7 @@ export interface Area {
 }
 
 export const getAreas = async (): Promise<Area[]> => {
-    const response = await fetch(`${API_URL}/areas/`);
+    const response = await fetchWithTimeout(`${API_URL}/areas/`);
     return response.json();
 };
 
@@ -16,7 +17,7 @@ export const getAreas = async (): Promise<Area[]> => {
 // };
 
 export const createArea = async (cityId: number, name: string): Promise<Area> => {
-    const response = await fetch(`${API_URL}/areas/`, {
+    const response = await fetchWithTimeout(`${API_URL}/areas/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

@@ -1,6 +1,7 @@
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 const API_URL = BASE_URL ? BASE_URL.replace(/\/$/, '') : '';
 import { City, Country, Area, UserLocation } from './location';
+import { fetchWithTimeout } from './fetchClient';
 
 export interface UserType {
     id: number;
@@ -28,7 +29,7 @@ export interface User {
 
 export const createUser = async (user: Omit<User, 'id'>): Promise<User> => {
     console.log('[createUser API] Sending payload:', JSON.stringify(user, null, 2));
-    const response = await fetch(`${API_URL}/app/register/user/`, {
+    const response = await fetchWithTimeout(`${API_URL}/app/register/user/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -41,7 +42,31 @@ export const createUser = async (user: Omit<User, 'id'>): Promise<User> => {
     console.log('[createUser API] Response Body:', responseText);
 
     if (!response.ok) {
-        throw new Error(`Failed to create user. Status: ${response.status}. Response: ${responseText}`);
+        if (response.status === 400) {
+            try {
+                const data = JSON.parse(responseText);
+                if (data) {
+                    if (data.phone_number) {
+                        throw new Error('Phone number is already registered.');
+                    }
+                    if (data.email) {
+                        throw new Error('Email address is already registered.');
+                    }
+                }
+            } catch (e: any) {
+                if (e.message === 'Phone number is already registered.' || e.message === 'Email address is already registered.') {
+                    throw e;
+                }
+            }
+            throw new Error('Invalid registration details. Please verify your fields.');
+        }
+        if (response.status === 404) {
+            throw new Error('The registration server could not be reached (404). Please try again later.');
+        }
+        if (response.status >= 500) {
+            throw new Error('The server is temporarily busy or undergoing maintenance. Please try again in a few moments (5xx).');
+        }
+        throw new Error(`Registration failed. Status: ${response.status}. Please check your details and try again.`);
     }
 
     try {
@@ -77,7 +102,7 @@ export const createUser = async (user: Omit<User, 'id'>): Promise<User> => {
 export const loginUser = async (phone_number: string, password: string): Promise<User> => {
     const url = `${API_URL}/app/user/login/`;
     console.log('[loginUser API] Logging in via URL:', url);
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -92,7 +117,13 @@ export const loginUser = async (phone_number: string, password: string): Promise
         if (response.status === 400 || response.status === 401 || response.status === 403) {
             throw new Error('Invalid phone number or password. Please try again.');
         }
-        throw new Error(`Login failed. Status: ${response.status}. Response: ${responseText}`);
+        if (response.status === 404) {
+            throw new Error('The login server could not be reached (404). Please try again later.');
+        }
+        if (response.status >= 500) {
+            throw new Error('The server is temporarily busy or undergoing maintenance. Please try again in a few moments (5xx).');
+        }
+        throw new Error(`Login failed. Status: ${response.status}. Please check your details and try again.`);
     }
 
     try {
@@ -113,7 +144,7 @@ export const verifyUserOnBackend = async (userId: number, token?: string): Promi
         headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
         method: 'PATCH',
         headers,
         body: JSON.stringify({ is_verified: true }),
@@ -124,7 +155,13 @@ export const verifyUserOnBackend = async (userId: number, token?: string): Promi
     console.log('[verifyUserOnBackend] Response Body:', responseText);
 
     if (!response.ok) {
-        throw new Error(`Verification failed on backend. Status: ${response.status}. Response: ${responseText}`);
+        if (response.status === 404) {
+            throw new Error('The verification server could not be reached (404). Please try again later.');
+        }
+        if (response.status >= 500) {
+            throw new Error('The server is temporarily busy or undergoing maintenance. Please try again in a few moments (5xx).');
+        }
+        throw new Error(`Verification failed on backend. Status: ${response.status}.`);
     }
 
     try {
@@ -139,7 +176,7 @@ export const checkPhoneExists = async (phoneNumber: string): Promise<boolean> =>
     const url = `${API_URL}/app/register/user/`;
     console.log('[checkPhoneExists] Checking phone existence via URL:', url);
     try {
-        const response = await fetch(url, {
+        const response = await fetchWithTimeout(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -168,9 +205,18 @@ export const checkPhoneExists = async (phoneNumber: string): Promise<boolean> =>
                 console.error('[checkPhoneExists] Failed to parse JSON error response:', e);
             }
         }
+        if (!response.ok) {
+            if (response.status === 404) {
+                throw new Error('The registration server could not be reached (404). Please try again later.');
+            }
+            if (response.status >= 500) {
+                throw new Error('The server is temporarily busy or undergoing maintenance. Please try again in a few moments (5xx).');
+            }
+            throw new Error(`Check failed. Status: ${response.status}`);
+        }
         return false;
-    } catch (error) {
+    } catch (error: any) {
         console.error('[checkPhoneExists] Connection error during check:', error);
-        return false; // Fallback to false so as not to block signup if network is down
+        throw error;
     }
 };

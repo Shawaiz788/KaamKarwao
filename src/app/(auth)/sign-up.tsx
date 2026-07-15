@@ -101,8 +101,22 @@ export default function SignUpScreen() {
             const rawMsg = err?.message || '';
             if (err.code === 'auth/invalid-phone-number') {
                 setError('phone', { message: 'Invalid phone number format' });
-            } else if (rawMsg.includes('Status: 5') || rawMsg.includes('500') || rawMsg.includes('504') || rawMsg.includes('502')) {
+            } else if (
+                rawMsg.includes('Status: 5') ||
+                rawMsg.includes('500') ||
+                rawMsg.includes('504') ||
+                rawMsg.includes('502') ||
+                rawMsg.includes('5xx') ||
+                rawMsg.includes('temporarily busy')
+            ) {
                 setError('root', { message: 'Server is temporarily busy. Please try again in a few moments.' });
+            } else if (
+                rawMsg.includes('timed out') ||
+                rawMsg.includes('not responding') ||
+                rawMsg.includes('connection error') ||
+                rawMsg.includes('could not be reached')
+            ) {
+                setError('root', { message: rawMsg });
             } else {
                 setError('root', { message: rawMsg || 'An error occurred sending OTP' });
             }
