@@ -154,7 +154,7 @@ export default function ProLiveJobsView() {
     const [selectedJob, setSelectedJob] = useState<LiveJob | null>(null);
     const [sheetVisible, setSheetVisible] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const [useMockData, setUseMockData] = useState(true); // Fallback while WS not configured
+    const [useMockData, setUseMockData] = useState(false); // Fallback while WS not configured
 
     const { jobs: wsJobs, wsStatus, hasNoJobs, refresh: wsRefresh } = useProWebSocket({
         userId: user?.id,
