@@ -22,6 +22,8 @@ export interface LiveJob {
     customer_rating?: number;
     scheduled_date?: string;
     created_at?: string;
+    description?: string;
+    attachments?: any[];
 }
 
 type WSMessage =
@@ -139,13 +141,15 @@ export function useProWebSocket({
                     const t = msg.task;
                     const newJob: LiveJob = {
                         id: t.id,
-                        title: t.body || t.subject || 'New Task',
+                        title: t.subject || 'New Task',
+                        description: t.body || '',
                         category: t.category_id === 2 ? 'AC Service' : t.category_id === 3 ? 'Plumber' : 'Electrician',
                         budget: t.price,
                         location_name: 'Loading location...',
                         customer_name: t.customer_name || 'Customer',
                         distance_km: 1.5,
                         created_at: t.created_at,
+                        attachments: (t as any).attachments || [],
                     };
 
                     setJobs((prev) => {

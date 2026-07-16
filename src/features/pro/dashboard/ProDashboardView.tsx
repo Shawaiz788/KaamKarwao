@@ -31,10 +31,10 @@ const CHART_DATA = [
 const MAX_CHART_VALUE = Math.max(...CHART_DATA.map((d) => d.value));
 
 const RECENT_JOBS = [
-    { id: '1', icon: 'flash', color: '#F97316', title: 'DB wiring — 3-bed apart...', address: 'DHA Phase 5 · Dec 20', amount: 'Rs. 4,500' },
-    { id: '2', icon: 'snow', color: '#3B82F6', title: 'Split AC install + gas refill', address: 'Gulberg III · Dec 18', amount: 'Rs. 7,200' },
-    { id: '3', icon: 'battery-charging', color: '#8B5CF6', title: 'UPS bypass wiring', address: 'Model Town · Dec 16', amount: 'Rs. 3,800' },
-    { id: '4', icon: 'flash', color: '#F97316', title: '4 ceiling fans + socket re...', address: 'Johar Town · Dec 14', amount: 'Rs. 2,900' },
+    { id: '1', title: 'AC repair service', address: 'Phase 2, Industrial Area', amount: 'Rs 8,500', icon: 'thermometer', color: '#F97316' },
+    { id: '2', title: 'Appliance Repair', address: 'Model Town, Phase 2', amount: 'Rs 6,000', icon: 'construct', color: '#3B82F6' },
+    { id: '3', title: 'Home Cleaning', address: 'Green Enclave, Phase 1', amount: 'Rs 4,200', icon: 'water', color: '#10B981' },
+    { id: '4', title: 'Painting Service', address: 'Urban Vistas, Phase 3', amount: 'Rs 10,500', icon: 'brush', color: '#8B5CF6' },
 ];
 
 // ─── Subcomponents ────────────────────────────────────────────────────────────
@@ -207,26 +207,36 @@ export default function ProDashboardView() {
                     </View>
 
                     <View style={styles.recentJobsCard}>
-                        {RECENT_JOBS.map((job, index) => (
-                            <View key={job.id}>
-                                <View style={styles.recentJobRow}>
-                                    <View style={[styles.jobIconBox, { backgroundColor: `${job.color}18` }]}>
-                                        <Ionicons name={job.icon as any} size={18} color={job.color} />
-                                    </View>
-                                    <View style={styles.jobInfo}>
-                                        <Text style={styles.jobTitle} numberOfLines={1}>{job.title}</Text>
-                                        <Text style={styles.jobAddress} numberOfLines={1}>{job.address}</Text>
-                                    </View>
-                                    <View style={styles.jobRight}>
-                                        <Text style={styles.jobAmount}>{job.amount}</Text>
-                                        <View style={styles.doneBadge}>
-                                            <Text style={styles.doneBadgeText}>✓ Done</Text>
+                        {RECENT_JOBS.length === 0 ? (
+                            <View style={styles.emptyStateContainer}>
+                                <View style={styles.emptyIconCircle}>
+                                    <Ionicons name="briefcase-outline" size={24} color={Colors.neutral[300]} />
+                                </View>
+                                <Text style={styles.emptyStateTitle}>No recent jobs</Text>
+                                <Text style={styles.emptyStateSub}>Completed jobs will appear here</Text>
+                            </View>
+                        ) : (
+                            RECENT_JOBS.map((job, index) => (
+                                <View key={job.id}>
+                                    <View style={styles.recentJobRow}>
+                                        <View style={[styles.jobIconBox, { backgroundColor: `${job.color}18` }]}>
+                                            <Ionicons name={job.icon as any} size={18} color={job.color} />
+                                        </View>
+                                        <View style={styles.jobInfo}>
+                                            <Text style={styles.jobTitle} numberOfLines={1}>{job.title}</Text>
+                                            <Text style={styles.jobAddress} numberOfLines={1}>{job.address}</Text>
+                                        </View>
+                                        <View style={styles.jobRight}>
+                                            <Text style={styles.jobAmount}>{job.amount}</Text>
+                                            <View style={styles.doneBadge}>
+                                                <Text style={styles.doneBadgeText}>✓ Done</Text>
+                                            </View>
                                         </View>
                                     </View>
+                                    {index < RECENT_JOBS.length - 1 && <View style={styles.jobDivider} />}
                                 </View>
-                                {index < RECENT_JOBS.length - 1 && <View style={styles.jobDivider} />}
-                            </View>
-                        ))}
+                            ))
+                        )}
                     </View>
                 </View>
             </ScrollView>
@@ -526,5 +536,31 @@ const styles = StyleSheet.create({
         height: 1,
         backgroundColor: Colors.neutral[100],
         marginHorizontal: 14,
+    },
+    emptyStateContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 32,
+        paddingHorizontal: 20,
+    },
+    emptyIconCircle: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        backgroundColor: Colors.neutral[50],
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 10,
+    },
+    emptyStateTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: Colors.neutral[700],
+        marginBottom: 4,
+    },
+    emptyStateSub: {
+        fontSize: 12,
+        color: Colors.neutral[400],
+        textAlign: 'center',
     },
 });

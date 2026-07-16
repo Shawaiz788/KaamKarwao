@@ -8,12 +8,12 @@ export interface Country {
 }
 
 export const getCountries = async (): Promise<Country[]> => {
-    const response = await fetchWithTimeout(`${API_URL}/countries/`);
+    const response = await fetchWithTimeout(`${API_URL}/app/country/`);
     return response.json();
 };
 
 export const createCountry = async (name: string): Promise<Country> => {
-    const response = await fetchWithTimeout(`${API_URL}/countries/`, {
+    const response = await fetchWithTimeout(`${API_URL}/app/country/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

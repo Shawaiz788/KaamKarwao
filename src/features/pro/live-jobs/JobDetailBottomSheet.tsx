@@ -13,6 +13,7 @@ import {
     ToastAndroid,
     Platform,
     Keyboard,
+    Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -333,6 +334,39 @@ export default function JobDetailBottomSheet({
                             </View>
                         </View>
 
+                        {/* Description & Attachments (visible when expanded) */}
+                        {sheetState === 'expanded' && (
+                            <View style={styles.expandedDetails}>
+                                <View style={styles.descriptionSection}>
+                                    <Text style={styles.subSectionLabel}>DESCRIPTION</Text>
+                                    <Text style={styles.descriptionText}>
+                                        {job?.description || (job as any)?.body || 'No description provided.'}
+                                    </Text>
+                                </View>
+
+                                {job?.attachments && job.attachments.length > 0 && (
+                                    <View style={styles.attachmentsSection}>
+                                        <Text style={styles.subSectionLabel}>ATTACHMENTS</Text>
+                                        <ScrollView
+                                            horizontal
+                                            showsHorizontalScrollIndicator={false}
+                                            contentContainerStyle={styles.attachmentsRow}
+                                        >
+                                            {job.attachments.map((item: any, idx: number) => {
+                                                const uri = typeof item === 'string' ? item : item.file || item.uri || item.url;
+                                                if (!uri) return null;
+                                                return (
+                                                    <View key={idx} style={styles.attachmentCard}>
+                                                        <Image source={{ uri }} style={styles.attachmentImage} />
+                                                    </View>
+                                                );
+                                            })}
+                                        </ScrollView>
+                                    </View>
+                                )}
+                            </View>
+                        )}
+
                         <View style={styles.sheetDivider} />
                     </View>
 
@@ -570,6 +604,36 @@ const styles = StyleSheet.create({
         color: '#EAB308',
         fontWeight: '600',
         marginTop: 2,
+    },
+    expandedDetails: {
+        gap: 16,
+        marginTop: 4,
+    },
+    descriptionSection: {
+        gap: 6,
+    },
+    descriptionText: {
+        fontSize: 14,
+        color: Colors.neutral[600],
+        lineHeight: 20,
+    },
+    attachmentsSection: {
+        gap: 8,
+    },
+    attachmentsRow: {
+        gap: 12,
+        paddingVertical: 4,
+    },
+    attachmentCard: {
+        borderRadius: 8,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: Colors.neutral[200],
+    },
+    attachmentImage: {
+        width: 100,
+        height: 100,
+        borderRadius: 8,
     },
     sheetDivider: {
         height: 1,

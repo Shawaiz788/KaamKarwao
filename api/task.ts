@@ -5,7 +5,7 @@ const API_URL = BASE_URL ? BASE_URL.replace(/\/$/, '') : '';
 
 // Helper to request a new access token from the backend refresh token endpoint
 const refreshAccessToken = async (refreshToken: string): Promise<string> => {
-  const url = `${API_URL}/app/user/token/refresh/`;
+  const url = `${API_URL}/app/token/refresh/`;
   console.log('[task API] Refreshing access token via URL:', url);
   const response = await fetch(url, {
     method: 'POST',
@@ -69,7 +69,7 @@ const getAuthHeaders = async (extraHeaders: Record<string, string> = {}): Promis
   }
 
   const headers: Record<string, string> = { ...extraHeaders };
-  if (token) {
+  if (token && !headers['Authorization']) {
     headers['Authorization'] = `Bearer ${token}`;
   }
   return headers;
@@ -187,7 +187,7 @@ export const uploadAttachment = async (uri: string, taskId: number): Promise<num
   formData.append('task', taskId.toString());
 
   // 4. Dispatch multipart fetch request with authenticated wrapper
-  const response = await fetchWithAuth(`${API_URL}/attachment/`, {
+  const response = await fetchWithAuth(`${API_URL}/app/attachment/`, {
     method: 'POST',
     body: formData,
     headers: {
@@ -213,7 +213,7 @@ export const uploadAttachment = async (uri: string, taskId: number): Promise<num
 
 // Fetch categories list (authenticated with auto-retry)
 export const getCategoriesFromBackend = async (): Promise<Category[]> => {
-  const response = await fetchWithAuth(`${API_URL}/category/`);
+  const response = await fetchWithAuth(`${API_URL}/app/category/`);
   const responseText = await response.text();
   //console.log('[task API] Get categories response status:', response.status);
 
@@ -225,8 +225,12 @@ export const getCategoriesFromBackend = async (): Promise<Category[]> => {
 };
 
 // Fetch payment preferences list (authenticated with auto-retry)
-export const getPaymentPreferencesFromBackend = async (): Promise<PaymentPreference[]> => {
-  const response = await fetchWithAuth(`${API_URL}/paymentpref/`);
+export const getPaymentPreferencesFromBackend = async (token?: string): Promise<PaymentPreference[]> => {
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  const response = await fetchWithAuth(`${API_URL}/app/paymentpref`, { headers });
   const responseText = await response.text();
   //console.log('[task API] Get paymentpref response status:', response.status);
 
@@ -239,7 +243,7 @@ export const getPaymentPreferencesFromBackend = async (): Promise<PaymentPrefere
 
 // Send create task request (authenticated with auto-retry)
 export const createTask = async (task: Omit<Task, 'id'>): Promise<Task> => {
-  const response = await fetchWithAuth(`${API_URL}/task/`, {
+  const response = await fetchWithAuth(`${API_URL}/app/task/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

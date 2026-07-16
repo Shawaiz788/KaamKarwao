@@ -29,7 +29,7 @@ export interface User {
 
 export const createUser = async (user: Omit<User, 'id'>): Promise<User> => {
     console.log('[createUser API] Sending payload:', JSON.stringify(user, null, 2));
-    const response = await fetchWithTimeout(`${API_URL}/app/register/user/`, {
+    const response = await fetchWithTimeout(`${API_URL}/app/register`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -100,7 +100,7 @@ export const createUser = async (user: Omit<User, 'id'>): Promise<User> => {
 // };
 
 export const loginUser = async (phone_number: string, password: string): Promise<User> => {
-    const url = `${API_URL}/app/user/login/`;
+    const url = `${API_URL}/app/login`;
     console.log('[loginUser API] Logging in via URL:', url);
     const response = await fetchWithTimeout(url, {
         method: 'POST',
@@ -135,7 +135,7 @@ export const loginUser = async (phone_number: string, password: string): Promise
 
 // Verify user account on backend using their user ID and optional JWT access token
 export const verifyUserOnBackend = async (userId: number, token?: string): Promise<any> => {
-    const url = `${API_URL}/app/user/${userId}/verify/`;
+    const url = `${API_URL}/app/verify/${userId}/`;
     console.log('[verifyUserOnBackend] Verifying account via URL:', url);
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -173,7 +173,7 @@ export const verifyUserOnBackend = async (userId: number, token?: string): Promi
 
 // Check if a phone number is already registered in the system (returns true if exists, false otherwise)
 export const checkPhoneExists = async (phoneNumber: string): Promise<boolean> => {
-    const url = `${API_URL}/app/register/user/`;
+    const url = `${API_URL}/app/register`;
     console.log('[checkPhoneExists] Checking phone existence via URL:', url);
     try {
         const response = await fetchWithTimeout(url, {

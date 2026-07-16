@@ -8,7 +8,7 @@ export interface Area {
 }
 
 export const getAreas = async (): Promise<Area[]> => {
-    const response = await fetchWithTimeout(`${API_URL}/areas/`);
+    const response = await fetchWithTimeout(`${API_URL}/app/area/`);
     return response.json();
 };
 
@@ -17,7 +17,7 @@ export const getAreas = async (): Promise<Area[]> => {
 // };
 
 export const createArea = async (cityId: number, name: string): Promise<Area> => {
-    const response = await fetchWithTimeout(`${API_URL}/areas/`, {
+    const response = await fetchWithTimeout(`${API_URL}/app/area/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

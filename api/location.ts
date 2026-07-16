@@ -28,7 +28,7 @@ export interface UserLocation {
 
 export const createLocation = async (location: UserLocation): Promise<UserLocation> => {
   console.log('[createLocation API] Sending payload:', JSON.stringify(location, null, 2));
-  const response = await fetchWithTimeout(`${API_URL}/locations/`, {
+  const response = await fetchWithTimeout(`${API_URL}/app/location/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -53,7 +53,7 @@ export const createLocation = async (location: UserLocation): Promise<UserLocati
 
 export const getLocationById = async (id: number): Promise<UserLocation> => {
   console.log(`[getLocationById API] Fetching location details for ID: ${id}`);
-  const response = await fetchWithTimeout(`${API_URL}/locations/${id}/`);
+  const response = await fetchWithTimeout(`${API_URL}/app/location/${id}/`);
   const responseText = await response.text();
   console.log('[getLocationById API] Response Status:', response.status);
   console.log('[getLocationById API] Response Body:', responseText);
