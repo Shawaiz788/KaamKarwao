@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Alert } from 'react-native';
 import { useAuth } from './auth';
-import { createTaskChain } from '../../api/task';
+import { createTaskChain, getStatusesFromBackend, updateTaskStatusOnBackend } from '../../api/task';
 import useTaskStore from '../store/taskStore';
 
 export interface Bid {
@@ -239,6 +239,24 @@ export function PostJobProvider({ children }: { children: React.ReactNode }) {
     if (activeTask) {
       const cancelledTask: Task = { ...activeTask, status: 'cancelled' };
       addTaskToHistory(cancelledTask);
+
+      if (activeTask.backend_id) {
+        const taskId = activeTask.backend_id;
+        const token = user?.token;
+        (async () => {
+          try {
+            console.log('[PostJobProvider] Cancelling backend task with ID:', taskId);
+            const statuses = await getStatusesFromBackend(token);
+            const cancelledStatus = statuses.find(s => s.name.toLowerCase() === 'cancelled');
+            const statusId = cancelledStatus ? cancelledStatus.id : 5;
+            
+            await updateTaskStatusOnBackend(taskId, statusId, token);
+            console.log('[PostJobProvider] Backend task status updated to Cancelled.');
+          } catch (err) {
+            console.error('[PostJobProvider] Failed to update task status on backend:', err);
+          }
+        })();
+      }
     }
     setActiveTask(null);
     setBids([]);

@@ -213,7 +213,7 @@ export const uploadAttachment = async (uri: string, taskId: number): Promise<num
 
 // Fetch categories list (authenticated with auto-retry)
 export const getCategoriesFromBackend = async (): Promise<Category[]> => {
-  const response = await fetchWithAuth(`${API_URL}/app/category/`);
+  const response = await fetchWithAuth(`${API_URL}/app/category`);
   const responseText = await response.text();
   //console.log('[task API] Get categories response status:', response.status);
 
@@ -243,7 +243,7 @@ export const getPaymentPreferencesFromBackend = async (token?: string): Promise<
 
 // Send create task request (authenticated with auto-retry)
 export const createTask = async (task: Omit<Task, 'id'>): Promise<Task> => {
-  const response = await fetchWithAuth(`${API_URL}/app/task/`, {
+  const response = await fetchWithAuth(`${API_URL}/app/task`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -316,4 +316,56 @@ export const createTaskChain = async (input: TaskChainInput): Promise<Task> => {
   }
 
   return createdTask;
+};
+
+export interface Status {
+  id: number;
+  name: string;
+}
+
+export const getStatusesFromBackend = async (token?: string): Promise<Status[]> => {
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  const response = await fetchWithAuth(`${API_URL}/app/status/`, { headers });
+  const responseText = await response.text();
+  console.log('[task API] Get statuses response status:', response.status);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch statuses. Status: ${response.status}. Response: ${responseText}`);
+  }
+
+  return JSON.parse(responseText);
+};
+
+export const updateTaskStatusOnBackend = async (
+  taskId: number,
+  statusId: number,
+  token?: string
+): Promise<any> => {
+  console.log(`[task API] Updating status of task ${taskId} to status ${statusId}`);
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  const response = await fetchWithAuth(`${API_URL}/app/task/${taskId}`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ status_id: statusId }),
+  });
+  const responseText = await response.text();
+  console.log('[task API] Update task status response status:', response.status);
+
+  if (!response.ok) {
+    throw new Error(`Failed to update task status on backend. Status: ${response.status}. Response: ${responseText}`);
+  }
+
+  try {
+    return JSON.parse(responseText);
+  } catch (e) {
+    return { message: responseText };
+  }
 };
