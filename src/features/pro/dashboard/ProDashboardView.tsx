@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -7,6 +7,7 @@ import {
     Pressable,
     StatusBar,
     Dimensions,
+    Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/provider/auth';
 import { Colors } from '@/constants/colors';
 import ProDrawerPanel from '../shared/ProDrawerPanel';
+import { getProEarnings, ProEarnings } from '../../../../api/proEarnings';
 
 const { width } = Dimensions.get('window');
 
@@ -92,6 +94,22 @@ export default function ProDashboardView() {
 
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [isOnline, setIsOnline] = useState(false);
+    const [earnings, setEarnings] = useState<ProEarnings | null>(null);
+    const [loadingEarnings, setLoadingEarnings] = useState(true);
+
+    useEffect(() => {
+        const fetchEarnings = async () => {
+            try {
+                const data = await getProEarnings();
+                setEarnings(data);
+            } catch (err) {
+                console.error('[ProDashboardView] Error fetching earnings:', err);
+            } finally {
+                setLoadingEarnings(false);
+            }
+        };
+        fetchEarnings();
+    }, []);
 
     const initials = user?.displayName
         ? user.displayName.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2)
@@ -107,10 +125,14 @@ export default function ProDashboardView() {
                     <Ionicons name="menu" size={26} color={Colors.white} />
                 </Pressable>
                 <Text style={styles.headerTitle}>Dashboard</Text>
-                <Pressable style={styles.avatarBtn}>
-                    <View style={styles.avatarCircle}>
-                        <Text style={styles.avatarText}>{initials}</Text>
-                    </View>
+                <Pressable style={styles.avatarBtn} onPress={() => router.push('/edit-profile')}>
+                    {user?.profile_pic ? (
+                        <Image source={{ uri: user.profile_pic }} style={styles.headerAvatarImage} />
+                    ) : (
+                        <View style={styles.avatarCircle}>
+                            <Text style={styles.avatarText}>{initials}</Text>
+                        </View>
+                    )}
                 </Pressable>
             </View>
 
@@ -131,30 +153,29 @@ export default function ProDashboardView() {
                 <View style={styles.statsGrid}>
                     <StatCard
                         label="This Week"
-                        value="Rs. 40,400"
-                        sub="+12% vs last week"
-                        subPositive
+                        value={loadingEarnings ? "..." : `Rs. ${earnings?.weekly_earning?.toLocaleString() || '0'}`}
+                        sub="Earned this week"
                         iconName="trending-up"
                         iconColor="#22C55E"
                     />
                     <StatCard
                         label="Total Earned"
-                        value="Rs. 46,400"
-                        sub="7 jobs"
+                        value={loadingEarnings ? "..." : `Rs. ${earnings?.total_earning?.toLocaleString() || '0'}`}
+                        sub={`${earnings?.jobs_done || 0} jobs`}
                         iconName="wallet-outline"
                         iconColor="#F97316"
                     />
                     <StatCard
                         label="Jobs Done"
-                        value="7"
-                        sub="This month"
+                        value={loadingEarnings ? "..." : `${earnings?.jobs_done || 0}`}
+                        sub="Completed jobs"
                         iconName="cube-outline"
                         iconColor="#3B82F6"
                     />
                     <StatCard
                         label="Avg Rating"
-                        value="4.9 ★"
-                        sub="7 reviews"
+                        value={(user as any)?.overall_rating ? `${(user as any).overall_rating} ★` : "4.9 ★"}
+                        sub="Recent rating"
                         iconName="star-outline"
                         iconColor="#EAB308"
                     />
@@ -562,5 +583,10 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: Colors.neutral[400],
         textAlign: 'center',
+    },
+    headerAvatarImage: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
     },
 });
