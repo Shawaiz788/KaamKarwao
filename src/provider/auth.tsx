@@ -16,14 +16,16 @@ export interface AppUser {
     location?: UserLocation;
     token?: string; // Optional JWT token
     refreshToken?: string; // Optional JWT refresh token
+    profile_pic?: string; // Profile picture URL
 }
 
 interface AuthContextType {
     user: AppUser | null;
     initializing: boolean;
-    login: (user: AppUser) => Promise<void>;
+    login: (user: AppUser, password?: string) => Promise<void>;
     logout: () => Promise<void>;
     reloadUser: () => Promise<void>;
+    updateUser: (updatedFields: Partial<AppUser>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -32,6 +34,7 @@ const AuthContext = createContext<AuthContextType>({
     login: async () => { },
     logout: async () => { },
     reloadUser: async () => { },
+    updateUser: async () => { },
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -59,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loadSession();
     }, []);
 
-    const login = async (appUser: AppUser) => {
+    const login = async (appUser: AppUser, password?: string) => {
         try {
             // Save the JWT access token and saved timestamp separately if present
             if (appUser.token) {
@@ -71,6 +74,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (appUser.refreshToken) {
                 await SecureStore.setItemAsync('user_refresh_token', appUser.refreshToken);
                 console.log('[SecureStore] Saved user JWT refresh token');
+            }
+            if (password) {
+                await SecureStore.setItemAsync('user_password', password);
+                console.log('[SecureStore] Saved user password to SecureStore');
             }
             await SecureStore.setItemAsync('user_session', JSON.stringify(appUser, null, 4));
             console.log('[SecureStore] Saved user session:', appUser);
@@ -87,7 +94,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await SecureStore.deleteItemAsync('user_token');
             await SecureStore.deleteItemAsync('user_refresh_token');
             await SecureStore.deleteItemAsync('user_token_saved_at');
-            console.log('[SecureStore] Deleted user session, tokens, and timestamp from device');
+            await SecureStore.deleteItemAsync('user_password');
+            console.log('[SecureStore] Deleted user session, tokens, password, and timestamp from device');
             setUser(null);
         } catch (e) {
             console.error('Error clearing user session:', e);
@@ -99,8 +107,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await loadSession();
     };
 
+    const updateUser = async (updatedFields: Partial<AppUser>) => {
+        try {
+            const currentSessionStr = await SecureStore.getItemAsync('user_session');
+            let currentSession = user;
+            if (currentSessionStr) {
+                currentSession = JSON.parse(currentSessionStr);
+            }
+            const newSession = {
+                ...currentSession,
+                ...updatedFields,
+            } as AppUser;
+
+            await SecureStore.setItemAsync('user_session', JSON.stringify(newSession, null, 4));
+            console.log('[SecureStore] Updated user session in SecureStore:', newSession);
+            setUser(newSession);
+        } catch (e) {
+            console.error('Error updating user session:', e);
+            throw e;
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, initializing, login, logout, reloadUser }}>
+        <AuthContext.Provider value={{ user, initializing, login, logout, reloadUser, updateUser }}>
             {children}
         </AuthContext.Provider>
     );

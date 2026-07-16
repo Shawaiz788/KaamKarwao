@@ -92,7 +92,7 @@ export default function SignInScreen() {
                 refreshToken: refreshToken, // Attach JWT refresh token
             };
 
-            await login(appUser);
+            await login(appUser, data.password);
 
             // Redirect based on user type
             if (appUser.usertype_id === USER_TYPE_PRO) {

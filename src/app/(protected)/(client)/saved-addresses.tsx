@@ -149,7 +149,7 @@ export default function SavedAddressesScreen() {
       // Link to user profile on backend
       if (user?.id) {
         console.log('[SavedAddresses] Linking location ID to user on backend...');
-        await updateUserOnBackend(user.id, { location_id: locationId }, user.token);
+        await updateUserOnBackend(user.id, { location_id: locationId });
       }
 
       // Sync local state

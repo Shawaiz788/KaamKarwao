@@ -496,7 +496,7 @@ export default function ProfileSetupScreen() {
           token: token, // Attach JWT token
           refreshToken: refreshToken, // Attach JWT refresh token
         };
-        await login(appUser);
+        await login(appUser, passwordToUse);
       }
 
       console.log('Saved locally / logged profile parameters:', {

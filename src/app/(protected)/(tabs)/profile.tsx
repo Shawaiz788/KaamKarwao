@@ -19,6 +19,7 @@ export default function ProfileRoute() {
     <ProfileView
       userName={user?.displayName || 'ShawaizAli'}
       userEmail={user?.email || 'shawaiz@example.com'}
+      userAvatar={user?.profile_pic}
       onSignOut={handleSignOut}
     />
   );

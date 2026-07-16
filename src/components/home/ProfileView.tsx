@@ -16,9 +16,10 @@ interface ProfileViewProps {
   userName: string;
   userEmail: string;
   onSignOut: () => void;
+  userAvatar?: string | null;
 }
 
-export default function ProfileView({ userName, userEmail, onSignOut }: ProfileViewProps) {
+export default function ProfileView({ userName, userEmail, onSignOut, userAvatar }: ProfileViewProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const profileOptions = [
@@ -43,12 +44,16 @@ export default function ProfileView({ userName, userEmail, onSignOut }: ProfileV
 
         <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
-            <View style={styles.avatarPlaceholder}>
-              <Text style={styles.avatarText}>
-                {userName ? userName.charAt(0).toUpperCase() : 'U'}
-              </Text>
-            </View>
-            <Pressable style={styles.editAvatarBtn}>
+            {userAvatar ? (
+              <Image source={{ uri: userAvatar }} style={styles.avatarImage} />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <Text style={styles.avatarText}>
+                  {userName ? userName.charAt(0).toUpperCase() : 'U'}
+                </Text>
+              </View>
+            )}
+            <Pressable style={styles.editAvatarBtn} onPress={() => router.push('/edit-profile')}>
               <Ionicons name="camera" size={16} color="#FFFFFF" />
             </Pressable>
           </View>
@@ -66,7 +71,15 @@ export default function ProfileView({ userName, userEmail, onSignOut }: ProfileV
       {/* Profile Options List */}
       <View style={styles.optionsContainer}>
         {profileOptions.map((option, index) => (
-          <Pressable key={index} style={styles.optionRow}>
+          <Pressable
+            key={index}
+            style={styles.optionRow}
+            onPress={() => {
+              if (option.label === 'Edit Profile') {
+                router.push('/edit-profile');
+              }
+            }}
+          >
             <View style={styles.optionLeft}>
               <View style={styles.optionIconContainer}>
                 <Ionicons name={option.icon as any} size={20} color="#4B5563" />
@@ -234,5 +247,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#EF4444',
+  },
+  avatarImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
   },
 });

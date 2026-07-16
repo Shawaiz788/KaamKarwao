@@ -6,6 +6,7 @@ import {
   Pressable,
   Animated,
   Dimensions,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AppUser } from '../../provider/auth';
@@ -49,11 +50,15 @@ export default function DrawerPanel({
         {/* Header section with user avatar, verification, and rating */}
         <View style={[styles.drawerHeader, { paddingTop: insets.top > 0 ? insets.top + 20 : 30 }]}>
           <View style={styles.avatarWrapper}>
-            <View style={styles.drawerAvatarCircle}>
-              <Text style={styles.drawerAvatarText}>
-                {user?.displayName ? user.displayName.charAt(0).toUpperCase() : 'U'}
-              </Text>
-            </View>
+            {user?.profile_pic ? (
+              <Image source={{ uri: user.profile_pic }} style={styles.drawerAvatarImage} />
+            ) : (
+              <View style={styles.drawerAvatarCircle}>
+                <Text style={styles.drawerAvatarText}>
+                  {user?.displayName ? user.displayName.charAt(0).toUpperCase() : 'U'}
+                </Text>
+              </View>
+            )}
             <Pressable
               style={styles.editAvatarBtn}
               onPress={() => {
@@ -200,6 +205,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#34D399',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  drawerAvatarImage: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },

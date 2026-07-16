@@ -1,132 +1,8 @@
-import * as SecureStore from 'expo-secure-store';
+import { fetchWithAuth } from './fetchClient';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 const API_URL = BASE_URL ? BASE_URL.replace(/\/$/, '') : '';
 
-// Helper to request a new access token from the backend refresh token endpoint
-const refreshAccessToken = async (refreshToken: string): Promise<string> => {
-  const url = `${API_URL}/app/token/refresh/`;
-  console.log('[task API] Refreshing access token via URL:', url);
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ refresh: refreshToken }),
-  });
-
-  const responseText = await response.text();
-  if (!response.ok) {
-    throw new Error(`Token refresh failed. Status: ${response.status}. Response: ${responseText}`);
-  }
-
-  try {
-    const data = JSON.parse(responseText);
-    const newAccessToken = data.access || data.access_token || data.token;
-    if (!newAccessToken) {
-      throw new Error('No access token returned from refresh API');
-    }
-    return newAccessToken;
-  } catch (e) {
-    throw new Error(`Failed to parse token refresh response. Content: ${responseText}`);
-  }
-};
-
-// Helper to construct Authorization header using JWT token from SecureStore (with automatic background refresh)
-const getAuthHeaders = async (extraHeaders: Record<string, string> = {}): Promise<Record<string, string>> => {
-  let token = await SecureStore.getItemAsync('user_token');
-  const savedAtStr = await SecureStore.getItemAsync('user_token_saved_at');
-  const refreshToken = await SecureStore.getItemAsync('user_refresh_token');
-
-  if (token && savedAtStr && refreshToken) {
-    const savedAt = parseInt(savedAtStr, 10);
-    const now = Date.now();
-    const thirtyMinutes = 30 * 60 * 1000;
-
-    if (now - savedAt > thirtyMinutes) {
-      console.log('[task API] JWT access token is older than 30 minutes. Triggering refresh...');
-      try {
-        const newAccessToken = await refreshAccessToken(refreshToken);
-
-        // Save new access token and update timestamp
-        await SecureStore.setItemAsync('user_token', newAccessToken);
-        await SecureStore.setItemAsync('user_token_saved_at', now.toString());
-
-        // Update the user_session payload so the Auth context remains synchronized
-        const sessionStr = await SecureStore.getItemAsync('user_session');
-        if (sessionStr) {
-          const sessionUser = JSON.parse(sessionStr);
-          sessionUser.token = newAccessToken;
-          await SecureStore.setItemAsync('user_session', JSON.stringify(sessionUser, null, 4));
-        }
-
-        token = newAccessToken;
-        // console.log('[task API] JWT access token successfully refreshed.');
-      } catch (err) {
-        console.error('[task API] Background JWT token refresh failed. Proceeding with old token:', err);
-      }
-    }
-  }
-
-  const headers: Record<string, string> = { ...extraHeaders };
-  if (token && !headers['Authorization']) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  return headers;
-};
-
-// Wrapper around fetch that intercepts 401 errors, auto-refreshes the token, and retries the call once
-const fetchWithAuth = async (url: string, options: RequestInit = {}): Promise<Response> => {
-  // 1. Inject auth headers
-  const authHeaders = await getAuthHeaders(options.headers as Record<string, string>);
-
-  // 2. Make original request
-  let response = await fetch(url, {
-    ...options,
-    headers: authHeaders,
-  });
-
-  // 3. If unauthorized (401), perform a token refresh and retry
-  if (response.status === 401) {
-    console.log('[task API] Access token is invalid or expired (401). Attempting background refresh...');
-    const refreshToken = await SecureStore.getItemAsync('user_refresh_token');
-
-    if (refreshToken) {
-      try {
-        const newAccessToken = await refreshAccessToken(refreshToken);
-        const now = Date.now();
-
-        // Overwrite token and timestamp
-        await SecureStore.setItemAsync('user_token', newAccessToken);
-        await SecureStore.setItemAsync('user_token_saved_at', now.toString());
-
-        // Keep local user session in sync
-        const sessionStr = await SecureStore.getItemAsync('user_session');
-        if (sessionStr) {
-          const sessionUser = JSON.parse(sessionStr);
-          sessionUser.token = newAccessToken;
-          await SecureStore.setItemAsync('user_session', JSON.stringify(sessionUser, null, 4));
-        }
-
-        // Retry the request with the refreshed bearer token
-        const retryHeaders = {
-          ...options.headers,
-          'Authorization': `Bearer ${newAccessToken}`,
-        };
-
-        console.log('[task API] Retrying failed request with new access token...');
-        response = await fetch(url, {
-          ...options,
-          headers: retryHeaders,
-        });
-      } catch (refreshErr) {
-        console.error('[task API] Background token refresh retry failed:', refreshErr);
-      }
-    }
-  }
-
-  return response;
-};
 
 export interface Category {
   id: number;
@@ -351,7 +227,7 @@ export const updateTaskStatusOnBackend = async (
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  const response = await fetchWithAuth(`${API_URL}/app/task/${taskId}`, {
+  const response = await fetchWithAuth(`${API_URL}/app/task/${taskId}/`, {
     method: 'PATCH',
     headers,
     body: JSON.stringify({ status_id: statusId }),

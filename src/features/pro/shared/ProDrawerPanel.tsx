@@ -130,9 +130,13 @@ export default function ProDrawerPanel({
 
                 {/* User Info */}
                 <View style={styles.userSection}>
-                    <View style={styles.avatarCircle}>
-                        <Text style={styles.avatarText}>{initials}</Text>
-                    </View>
+                    {user?.profile_pic ? (
+                        <Image source={{ uri: user.profile_pic }} style={styles.avatarImage} />
+                    ) : (
+                        <View style={styles.avatarCircle}>
+                            <Text style={styles.avatarText}>{initials}</Text>
+                        </View>
+                    )}
                     <View style={styles.userInfo}>
                         <Text style={styles.userName} numberOfLines={1}>
                             {user?.displayName || 'Professional'}
@@ -275,6 +279,11 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.pro.accentDim,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    avatarImage: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
     },
     avatarText: {
         color: Colors.white,

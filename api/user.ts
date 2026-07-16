@@ -1,7 +1,8 @@
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 const API_URL = BASE_URL ? BASE_URL.replace(/\/$/, '') : '';
 import { City, Country, Area, UserLocation } from './location';
-import { fetchWithTimeout } from './fetchClient';
+import { fetchWithTimeout, fetchWithAuth } from './fetchClient';
+import * as SecureStore from 'expo-secure-store';
 
 export interface UserType {
     id: number;
@@ -15,11 +16,13 @@ export interface User {
     phone_number: string;
     email: string;
     gender: string;
-    password: string;
+    password?: string;
     overall_rating?: number;
     usertype_id: number;
     location_id: number;
+    profile_pic?: string;
 }
+
 
 // export const getUsers = async (): Promise<User[]> => {
 //     const response = await fetch(`${API_URL}/User`);
@@ -76,28 +79,7 @@ export const createUser = async (user: Omit<User, 'id'>): Promise<User> => {
     }
 };
 
-// export const updateUser = async (user: User): Promise<User> => {
-//     const result = await fetch(`${API_URL}/User/${user.id}`, {
-//         method: 'PUT',
-//         headers: {
-//             'Content-Type': 'application/json',
-//         },
-//         body: JSON.stringify(user),
-//     });
-//     return result.json();
-// };
 
-// export const deleteUser = async (id: number): Promise<User> => {
-//     const result = await fetch(`${API_URL}/User/${id}`, {
-//         method: 'DELETE',
-//     });
-//     return result.json();
-// };
-
-// export const getUserById = async (id: number): Promise<User> => {
-//     const result = await fetch(`${API_URL}/User/${id}`);
-//     return result.json();
-// };
 
 export const loginUser = async (phone_number: string, password: string): Promise<User> => {
     const url = `${API_URL}/app/login`;
@@ -223,23 +205,31 @@ export const checkPhoneExists = async (phoneNumber: string): Promise<boolean> =>
 
 export const updateUserOnBackend = async (
     userId: number,
-    userDetails: Partial<User>,
-    token?: string
+    userDetails: Partial<User>
 ): Promise<User> => {
     console.log(`[user API] Updating user details on backend for User ID: ${userId}`, userDetails);
-    const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-    };
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+
+    // Retrieve cached password from SecureStore
+    const password = await SecureStore.getItemAsync('user_password');
+    if (!password) {
+        throw new Error('Security credentials missing. Please sign out and sign in again to update your profile.');
     }
-    const response = await fetchWithTimeout(`${API_URL}/app/update/user/`, {
+
+    const bodyPayload = {
+        ...userDetails,
+        password: password,
+    };
+
+    const response = await fetchWithAuth(`${API_URL}/app/update/user/`, {
         method: 'PUT',
-        headers,
-        body: JSON.stringify(userDetails),
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(bodyPayload),
     });
     const responseText = await response.text();
     console.log('[user API] Update user response status:', response.status);
+
 
     if (!response.ok) {
         throw new Error(`Failed to update profile on backend. Status: ${response.status}. Response: ${responseText}`);
@@ -249,5 +239,49 @@ export const updateUserOnBackend = async (
         return JSON.parse(responseText);
     } catch (e) {
         throw new Error(`Failed to parse profile update response as JSON. Content: ${responseText}`);
+    }
+};
+
+export const updateProfilePic = async (
+    uri: string
+): Promise<User> => {
+    console.log(`[user API] Uploading profile picture from uri: ${uri}`);
+    const formData = new FormData();
+    const filename = uri.split('/').pop() || 'profile.jpg';
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+    formData.append('profile_pic', {
+        uri,
+        name: filename,
+        type,
+    } as any);
+
+    // Retrieve cached password from SecureStore
+    const password = await SecureStore.getItemAsync('user_password');
+    if (!password) {
+        throw new Error('Security credentials missing. Please sign out and sign in again to update your profile picture.');
+    }
+    formData.append('password', password);
+
+    const response = await fetchWithAuth(`${API_URL}/app/update/user/`, {
+        method: 'PUT',
+        body: formData,
+        headers: {
+            'Accept': 'application/json',
+        },
+    });
+
+    const responseText = await response.text();
+    console.log('[user API] Update profile pic response status:', response.status);
+
+    if (!response.ok) {
+        throw new Error(`Failed to update profile picture on backend. Status: ${response.status}. Response: ${responseText}`);
+    }
+
+    try {
+        return JSON.parse(responseText);
+    } catch (e) {
+        throw new Error(`Failed to parse profile picture update response. Content: ${responseText}`);
     }
 };

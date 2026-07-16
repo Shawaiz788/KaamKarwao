@@ -10,17 +10,19 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/provider/auth';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { updateUserOnBackend } from '@/../api/user';
+import { updateUserOnBackend, updateProfilePic } from '@/../api/user';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function EditProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user, login } = useAuth();
+  const { user, updateUser } = useAuth();
 
   // Split current displayName for initial inputs if first_name / last_name aren't direct
   const initialNameParts = user?.displayName ? user.displayName.trim().split(/\s+/) : [];
@@ -31,7 +33,30 @@ export default function EditProfileScreen() {
   const [lastName, setLastName] = useState(initialLastName);
   const [email, setEmail] = useState(user?.email || '');
   const [gender, setGender] = useState(user?.gender || 'male');
+  const [profilePic, setProfilePic] = useState<string | null>(user?.profile_pic || null);
+  const [newProfilePicUri, setNewProfilePicUri] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'Gallery permissions are required to select a profile picture.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const selectedUri = result.assets[0].uri;
+      setNewProfilePicUri(selectedUri);
+      setProfilePic(selectedUri);
+    }
+  };
 
   const handleSave = async () => {
     if (!firstName.trim()) {
@@ -49,7 +74,7 @@ export default function EditProfileScreen() {
 
     setIsSaving(true);
     try {
-      const updatedFields = {
+      const updatedFields: any = {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         email: email.trim(),
@@ -58,17 +83,24 @@ export default function EditProfileScreen() {
 
       if (user?.id) {
         console.log('[EditProfile] Submitting updates to backend...');
-        await updateUserOnBackend(user.id, updatedFields, user.token);
+        await updateUserOnBackend(user.id, updatedFields);
+      }
+
+      if (newProfilePicUri) {
+        console.log('[EditProfile] Submitting profile picture update to backend...');
+        const profilePicResponse = await updateProfilePic(newProfilePicUri);
+        if (profilePicResponse && profilePicResponse.profile_pic) {
+          updatedFields.profile_pic = profilePicResponse.profile_pic;
+        }
       }
 
       // Update locally
       const updatedUser = {
-        ...user,
         ...updatedFields,
         displayName: `${firstName.trim()} ${lastName.trim()}`,
-      } as any;
+      };
 
-      await login(updatedUser);
+      await updateUser(updatedUser);
       Alert.alert('Success', 'Profile updated successfully!', [
         { text: 'OK', onPress: () => router.back() }
       ]);
@@ -103,17 +135,21 @@ export default function EditProfileScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Avatar Section */}
-        <View style={styles.avatarSection}>
+        <Pressable style={styles.avatarSection} onPress={handlePickImage}>
           <View style={styles.avatarPlaceholder}>
-            <Text style={styles.avatarText}>
-              {firstName ? firstName.charAt(0).toUpperCase() : 'U'}
-            </Text>
+            {profilePic ? (
+              <Image source={{ uri: profilePic }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>
+                {firstName ? firstName.charAt(0).toUpperCase() : 'U'}
+              </Text>
+            )}
             <View style={styles.avatarCameraBadge}>
               <Ionicons name="camera" size={16} color="#FFFFFF" />
             </View>
           </View>
-          <Text style={styles.avatarTip}>Avatar is automatically generated from your initials</Text>
-        </View>
+          <Text style={styles.avatarTip}>Tap to change profile picture</Text>
+        </Pressable>
 
         {/* Form Inputs */}
         <View style={styles.formContainer}>
@@ -380,5 +416,10 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
+  },
+  avatarImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
   },
 });
