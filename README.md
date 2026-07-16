@@ -1,8 +1,24 @@
 # 🔐 Production-Ready Authentication, Task Hiring & Mapping Flow (Expo & React Native)
 
-<p align="center">
-  <video src="https://github.com/user-attachments/assets/8a797f8e-f38c-439b-b926-efdb436308e9" width="320" controls></video>
-</p>
+<table align="center">
+<tr>
+<td align="center">
+
+### 🎥 Kaam Karwao Demo
+
+<video
+  src="https://github.com/user-attachments/assets/ae363c29-7017-44c1-b0b6-7505cb8d7bcd"
+  width="400"
+  controls>
+</video>
+
+</td>
+</tr>
+</table>
+
+
+
+
 
 A premium, secure, and modern hiring services application built for **Expo (SDK 54)** and **React Native**. Features a custom session system utilizing local encrypted storage, modular production-grade UI design, an interactive Leaflet mapping engine, and a real-time provider/client bidding and chat integration to hire verified professionals.
 
