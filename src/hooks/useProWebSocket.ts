@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { getLocationById } from '@/services/location';
+import { getCustomerProfile, normalizeImageUrl } from '@/services/customer';
 import { LiveJob } from '@/types';
 import useCategoryStore from '@/store/categoryStore';
 export { LiveJob };
@@ -24,6 +25,7 @@ type WSMessage =
             category_id: number;
             location_id: number;
             created_at?: string;
+            created_by?: number;
             customer_name?: string;
             attachments?: any[];
         };
@@ -123,9 +125,12 @@ export function useProWebSocket({
                         category_color: catColor,
                         budget: t.price,
                         location_name: 'Loading location...',
+                        customer_id: t.created_by,
                         customer_name: t.customer_name || 'Customer',
                         created_at: t.created_at,
                         attachments: t.attachments || [],
+                        is_location_loading: Boolean(t.location_id),
+                        is_customer_loading: Boolean(t.created_by),
                     };
 
                     setJobs((prev) => {
@@ -134,19 +139,56 @@ export function useProWebSocket({
                         return [newJob, ...prev];
                     });
 
+                    // Resolve customer details asynchronously using created_by (customer ID)
+                    if (t.created_by) {
+                        getCustomerProfile(t.created_by)
+                            .then((profile) => {
+                                const fullName = [profile.first_name, profile.last_name]
+                                    .filter(Boolean)
+                                    .join(' ')
+                                    .trim();
+                                const customerName = fullName || t.customer_name || 'Customer';
+                                const customerImage = normalizeImageUrl(profile.image);
+
+                                setJobs((prev) =>
+                                    prev.map((j) =>
+                                        j.id === t.id
+                                            ? {
+                                                  ...j,
+                                                  customer_id: profile.id,
+                                                  customer_name: customerName,
+                                                  customer_rating: profile.overall_rating,
+                                                  customer_image: customerImage,
+                                                  customer_profile: profile,
+                                                  is_customer_loading: false,
+                                              }
+                                            : j
+                                    )
+                                );
+                            })
+                            .catch((err) => {
+                                console.warn(`[useProWebSocket] Failed to fetch customer profile for ID ${t.created_by}:`, err);
+                                setJobs((prev) =>
+                                    prev.map((j) =>
+                                        j.id === t.id ? { ...j, is_customer_loading: false } : j
+                                    )
+                                );
+                            });
+                    }
+
                     // Resolve location asynchronously
                     if (t.location_id) {
                         getLocationById(t.location_id)
                             .then((loc) => {
                                 const address = loc.formatted_address || 'Unknown Location';
                                 setJobs((prev) =>
-                                    prev.map((j) => (j.id === t.id ? { ...j, location_name: address } : j))
+                                    prev.map((j) => (j.id === t.id ? { ...j, location_name: address, is_location_loading: false } : j))
                                 );
                             })
                             .catch(() => {
                                 setJobs((prev) =>
                                     prev.map((j) =>
-                                        j.id === t.id ? { ...j, location_name: 'Location not found' } : j
+                                        j.id === t.id ? { ...j, location_name: 'Location not found', is_location_loading: false } : j
                                     )
                                 );
                             });

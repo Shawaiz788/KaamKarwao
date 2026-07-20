@@ -72,6 +72,21 @@ export interface ProEarnings {
   updated_at: string;
 }
 
+// ─── Customer Profile Types ──────────────────────────────────────────────────
+export interface CustomerProfile {
+  id: number;
+  first_name: string;
+  last_name: string;
+  phone_number?: string;
+  email?: string;
+  location_id?: number;
+  gender?: string;
+  overall_rating?: number;
+  is_verified?: boolean;
+  usertype_id?: number;
+  image?: string | null;
+}
+
 // ─── Pro Live Jobs Types ──────────────────────────────────────────────────────
 export interface LiveJob {
   id: number;
@@ -83,12 +98,17 @@ export interface LiveJob {
   distance_km?: number;
   location_name: string;
   location_area?: string;
+  customer_id?: number;
   customer_name: string;
   customer_rating?: number;
+  customer_image?: string;
+  customer_profile?: CustomerProfile;
   scheduled_date?: string;
   created_at?: string;
   description?: string;
   attachments?: any[];
+  is_location_loading?: boolean;
+  is_customer_loading?: boolean;
 }
 
 // ─── Client Post Job & Bid Types ──────────────────────────────────────────────

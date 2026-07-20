@@ -197,11 +197,11 @@ export default function OnboardingScreen1() {
   // Use light button icons on Android to remove the contrast background scrim and make the navigation bar transparent over our green background
   useEffect(() => {
     if (Platform.OS === 'android') {
-      NavigationBar.setButtonStyleAsync('light');
+      NavigationBar.setButtonStyleAsync('light').catch(() => {});
     }
     return () => {
       if (Platform.OS === 'android') {
-        NavigationBar.setButtonStyleAsync('dark');
+        NavigationBar.setButtonStyleAsync('dark').catch(() => {});
       }
     };
   }, []);

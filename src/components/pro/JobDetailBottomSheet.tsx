@@ -93,6 +93,54 @@ interface JobDetailBottomSheetProps {
     onPlaceBid?: (job: LiveJob, amount: number) => void;
 }
 
+function SkeletonBox({
+    width,
+    height,
+    borderRadius = 4,
+    style,
+}: {
+    width: number | `${number}%`;
+    height: number;
+    borderRadius?: number;
+    style?: any;
+}) {
+    const pulseAnim = useRef(new Animated.Value(0.3)).current;
+
+    useEffect(() => {
+        const animation = Animated.loop(
+            Animated.sequence([
+                Animated.timing(pulseAnim, {
+                    toValue: 0.8,
+                    duration: 650,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(pulseAnim, {
+                    toValue: 0.3,
+                    duration: 650,
+                    useNativeDriver: true,
+                }),
+            ])
+        );
+        animation.start();
+        return () => animation.stop();
+    }, [pulseAnim]);
+
+    return (
+        <Animated.View
+            style={[
+                {
+                    width,
+                    height,
+                    borderRadius,
+                    backgroundColor: Colors.neutral[200] || '#E5E7EB',
+                    opacity: pulseAnim,
+                },
+                style,
+            ]}
+        />
+    );
+}
+
 function showToast(message: string) {
     if (Platform.OS === 'android') {
         ToastAndroid.show(message, ToastAndroid.SHORT);
@@ -419,15 +467,19 @@ export default function JobDetailBottomSheet({
                         <View style={styles.detailRow}>
                             <Ionicons name="location-outline" size={16} color={Colors.neutral[400]} />
                             <View style={{ flex: 1 }}>
-                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Text style={styles.detailPrimary}>{job?.location_name}</Text>
-                                    {job?.distance_km !== undefined && job?.distance_km !== null && (
-                                        <View style={styles.distanceBadge}>
-                                            <Ionicons name="navigate-outline" size={12} color="#16A34A" style={{ marginRight: 2 }} />
-                                            <Text style={styles.distanceText}>{job.distance_km.toFixed(1)} km away</Text>
-                                        </View>
-                                    )}
-                                </View>
+                                {job?.is_location_loading || job?.location_name === 'Loading location...' ? (
+                                    <SkeletonBox width={160} height={16} borderRadius={4} style={{ marginVertical: 2 }} />
+                                ) : (
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <Text style={styles.detailPrimary}>{job?.location_name}</Text>
+                                        {job?.distance_km !== undefined && job?.distance_km !== null && (
+                                            <View style={styles.distanceBadge}>
+                                                <Ionicons name="navigate-outline" size={12} color="#16A34A" style={{ marginRight: 2 }} />
+                                                <Text style={styles.distanceText}>{job.distance_km.toFixed(1)} km away</Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                )}
                                 {job?.location_area && (
                                     <Text style={styles.detailSecondary}>{job?.location_area}</Text>
                                 )}
@@ -438,17 +490,33 @@ export default function JobDetailBottomSheet({
                         <View style={styles.customerSection}>
                             <Text style={styles.subSectionLabel}>CUSTOMER</Text>
                             <View style={styles.customerCard}>
-                                <View style={styles.custAvatar}>
-                                    <Text style={styles.custAvatarText}>
-                                        {(job?.customer_name || 'C')[0].toUpperCase()}
-                                    </Text>
-                                </View>
-                                <View style={styles.custInfo}>
-                                    <Text style={styles.custName}>{job?.customer_name}</Text>
-                                    {job?.customer_rating && (
-                                        <Text style={styles.custRating}>★ {job.customer_rating.toFixed(1)} rating</Text>
-                                    )}
-                                </View>
+                                {job?.is_customer_loading || job?.customer_name === 'Loading customer...' ? (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                                        <SkeletonBox width={42} height={42} borderRadius={21} />
+                                        <View style={{ gap: 6, flex: 1 }}>
+                                            <SkeletonBox width={130} height={16} borderRadius={4} />
+                                            <SkeletonBox width={70} height={14} borderRadius={4} />
+                                        </View>
+                                    </View>
+                                ) : (
+                                    <>
+                                        <View style={styles.custAvatar}>
+                                            {job?.customer_image ? (
+                                                <Image source={{ uri: job.customer_image }} style={styles.custAvatarImage} />
+                                            ) : (
+                                                <Text style={styles.custAvatarText}>
+                                                    {(job?.customer_name || 'C')[0].toUpperCase()}
+                                                </Text>
+                                            )}
+                                        </View>
+                                        <View style={styles.custInfo}>
+                                            <Text style={styles.custName}>{job?.customer_name}</Text>
+                                            {job?.customer_rating !== undefined && job?.customer_rating !== null && (
+                                                <Text style={styles.custRating}>★ {Number(job.customer_rating).toFixed(1)} rating</Text>
+                                            )}
+                                        </View>
+                                    </>
+                                )}
                             </View>
                         </View>
 
@@ -760,6 +828,11 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.brand.medium,
         justifyContent: 'center',
         alignItems: 'center',
+        overflow: 'hidden',
+    },
+    custAvatarImage: {
+        width: '100%',
+        height: '100%',
     },
     custAvatarText: {
         color: Colors.white,

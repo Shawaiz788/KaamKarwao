@@ -25,6 +25,54 @@ interface JobCardProps {
     activeBid?: ActiveBidState | null;
 }
 
+function SkeletonBox({
+    width,
+    height,
+    borderRadius = 4,
+    style,
+}: {
+    width: number | `${number}%`;
+    height: number;
+    borderRadius?: number;
+    style?: any;
+}) {
+    const pulseAnim = useRef(new Animated.Value(0.3)).current;
+
+    useEffect(() => {
+        const animation = Animated.loop(
+            Animated.sequence([
+                Animated.timing(pulseAnim, {
+                    toValue: 0.8,
+                    duration: 650,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(pulseAnim, {
+                    toValue: 0.3,
+                    duration: 650,
+                    useNativeDriver: true,
+                }),
+            ])
+        );
+        animation.start();
+        return () => animation.stop();
+    }, [pulseAnim]);
+
+    return (
+        <Animated.View
+            style={[
+                {
+                    width,
+                    height,
+                    borderRadius,
+                    backgroundColor: Colors.neutral[200] || '#E5E7EB',
+                    opacity: pulseAnim,
+                },
+                style,
+            ]}
+        />
+    );
+}
+
 function showToast(message: string) {
     if (Platform.OS === 'android') {
         ToastAndroid.show(message, ToastAndroid.SHORT);
@@ -120,8 +168,12 @@ export default function JobCard({ job, onPress, onQuickBid, activeBid }: JobCard
             {/* Location */}
             <View style={styles.locationRow}>
                 <Ionicons name="location-outline" size={14} color={Colors.neutral[400]} />
-                <View>
-                    <Text style={styles.locationName} numberOfLines={1}>{job.location_name}</Text>
+                <View style={{ flex: 1 }}>
+                    {job.is_location_loading || job.location_name === 'Loading location...' ? (
+                        <SkeletonBox width={140} height={14} borderRadius={4} style={{ marginVertical: 2 }} />
+                    ) : (
+                        <Text style={styles.locationName} numberOfLines={1}>{job.location_name}</Text>
+                    )}
                     {job.location_area && (
                         <Text style={styles.locationArea} numberOfLines={1}>{job.location_area}</Text>
                     )}
@@ -136,14 +188,21 @@ export default function JobCard({ job, onPress, onQuickBid, activeBid }: JobCard
                 </View>
                 <View style={styles.customerBox}>
                     <Text style={styles.customerLabel}>Customer</Text>
-                    <View style={styles.customerRow}>
-                        <Text style={styles.customerName}>{job.customer_name}</Text>
-                        {job.customer_rating && (
-                            <Text style={styles.customerRating}>
-                                ★ {job.customer_rating.toFixed(1)}
-                            </Text>
-                        )}
-                    </View>
+                    {job.is_customer_loading || job.customer_name === 'Loading customer...' ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                            <SkeletonBox width={65} height={13} borderRadius={4} />
+                            <SkeletonBox width={28} height={13} borderRadius={4} />
+                        </View>
+                    ) : (
+                        <View style={styles.customerRow}>
+                            <Text style={styles.customerName}>{job.customer_name}</Text>
+                            {job.customer_rating !== undefined && job.customer_rating !== null && (
+                                <Text style={styles.customerRating}>
+                                    ★ {Number(job.customer_rating).toFixed(1)}
+                                </Text>
+                            )}
+                        </View>
+                    )}
                 </View>
             </View>
 
