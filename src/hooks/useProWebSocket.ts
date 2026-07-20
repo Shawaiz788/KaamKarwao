@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { getLocationById } from '@/services/location';
 import { getCustomerProfile, normalizeImageUrl } from '@/services/customer';
+import { getTaskAttachments } from '@/services/task';
 import { LiveJob } from '@/types';
 import useCategoryStore from '@/store/categoryStore';
 export { LiveJob };
@@ -192,6 +193,31 @@ export function useProWebSocket({
                                     )
                                 );
                             });
+                    }
+
+                    // Resolve attachments asynchronously using task ID (with delayed retry if initial fetch is empty)
+                    if (t.id) {
+                        const fetchAttachmentsWithRetry = (attempt: number = 1) => {
+                            getTaskAttachments(t.id)
+                                .then((fetchedAttachments) => {
+                                    if (fetchedAttachments && Array.isArray(fetchedAttachments) && fetchedAttachments.length > 0) {
+                                        setJobs((prev) =>
+                                            prev.map((j) => (j.id === t.id ? { ...j, attachments: fetchedAttachments } : j))
+                                        );
+                                    } else if (attempt === 1) {
+                                        // Initial response was empty — retry after 3 seconds in case client is still uploading
+                                        setTimeout(() => fetchAttachmentsWithRetry(2), 3000);
+                                    }
+                                })
+                                .catch((err) => {
+                                    console.warn(`[useProWebSocket] Failed to fetch attachments for task ${t.id} (attempt ${attempt}):`, err);
+                                    if (attempt === 1) {
+                                        setTimeout(() => fetchAttachmentsWithRetry(2), 3000);
+                                    }
+                                });
+                        };
+
+                        fetchAttachmentsWithRetry(1);
                     }
                 }
                 // 'ping' → no-op (heartbeat keepalive)

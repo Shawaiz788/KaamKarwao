@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
 import { LiveJob } from '@/hooks/useProWebSocket';
 import { getCategoryStyle } from '@/store/categoryStore';
+import { getTaskAttachments } from '@/services/task';
 
 const { height: WINDOW_H } = Dimensions.get('window');
 const { height: SCREEN_H_SCREEN } = Dimensions.get('screen');
@@ -169,15 +170,34 @@ export default function JobDetailBottomSheet({
     const [keyboardHeight, setKeyboardHeight] = useState(0);
     const [localVisible, setLocalVisible] = useState(isVisible);
     const [previewImage, setPreviewImage] = useState<string | null>(null);
+    const [localAttachments, setLocalAttachments] = useState<any[]>(job?.attachments || []);
     const waitingTimer = useRef<NodeJS.Timeout | null>(null);
     const countdownTimer = useRef<NodeJS.Timeout | null>(null);
 
-    // Synchronize local visibility when opened
+    // Synchronize local visibility and attachments when job changes or sheet opens
     useEffect(() => {
         if (isVisible) {
             setLocalVisible(true);
         }
     }, [isVisible]);
+
+    useEffect(() => {
+        setLocalAttachments(job?.attachments || []);
+    }, [job]);
+
+    useEffect(() => {
+        if (isVisible && job?.id) {
+            getTaskAttachments(job.id)
+                .then((fresh) => {
+                    if (fresh && Array.isArray(fresh) && fresh.length > 0) {
+                        setLocalAttachments(fresh);
+                    }
+                })
+                .catch((err) => {
+                    console.warn(`[JobDetailBottomSheet] Failed to fetch fresh attachments for task ${job.id}:`, err);
+                });
+        }
+    }, [isVisible, job?.id]);
 
     const base = job?.budget ?? 0;
     const plus5 = Math.round(base * 1.05);
@@ -403,7 +423,7 @@ export default function JobDetailBottomSheet({
     ];
 
     const scrollViewHeight = (isExpanded ? SCREEN_H - insets.top : HALF_H) - 36 - keyboardHeight;
-    const attachmentList = getNormalizedAttachments(job?.attachments);
+    const attachmentList = getNormalizedAttachments(localAttachments);
 
     return (
         <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
@@ -529,12 +549,15 @@ export default function JobDetailBottomSheet({
                                 </Text>
                             </View>
 
-                            {attachmentList.length > 0 && (
-                                <View style={styles.attachmentsSection}>
-                                    <View style={styles.attachmentsHeaderRow}>
-                                        <Text style={styles.subSectionLabel}>ATTACHMENTS ({attachmentList.length})</Text>
+                            <View style={styles.attachmentsSection}>
+                                <View style={styles.attachmentsHeaderRow}>
+                                    <Text style={styles.subSectionLabel}>ATTACHMENTS ({attachmentList.length})</Text>
+                                    {attachmentList.length > 0 && (
                                         <Text style={styles.tapToViewHint}>Tap image to view</Text>
-                                    </View>
+                                    )}
+                                </View>
+
+                                {attachmentList.length > 0 ? (
                                     <ScrollView
                                         horizontal
                                         nestedScrollEnabled
@@ -562,8 +585,13 @@ export default function JobDetailBottomSheet({
                                             </TouchableOpacity>
                                         ))}
                                     </ScrollView>
-                                </View>
-                            )}
+                                ) : (
+                                    <View style={styles.noAttachmentBox}>
+                                        <Ionicons name="images-outline" size={18} color={Colors.neutral[400]} />
+                                        <Text style={styles.noAttachmentText}>No attachments provided</Text>
+                                    </View>
+                                )}
+                            </View>
                         </View>
 
                         <View style={styles.sheetDivider} />
@@ -912,6 +940,24 @@ const styles = StyleSheet.create({
         height: 22,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    noAttachmentBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 14,
+        backgroundColor: Colors.neutral[50],
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: Colors.neutral[200],
+        borderStyle: 'dashed',
+        marginTop: 2,
+    },
+    noAttachmentText: {
+        fontSize: 13,
+        color: Colors.neutral[400],
+        fontWeight: '500',
     },
     modalBackdrop: {
         position: 'absolute',

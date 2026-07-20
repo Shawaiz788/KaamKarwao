@@ -1,4 +1,4 @@
-import { fetchWithAuth } from './fetchClient';
+import { fetchWithAuth, fetchWithTimeout } from './fetchClient';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 const API_URL = BASE_URL ? BASE_URL.replace(/\/$/, '') : '';
@@ -19,6 +19,38 @@ export interface TaskChainInput {
   locationId: number;
   attachmentUris?: string[] | null;
 }
+
+// Fetch task attachments for a given taskId
+export const getTaskAttachments = async (taskId: number): Promise<any[]> => {
+  console.log(`[task API] Fetching attachments for task ID: ${taskId}`);
+  const url = `${API_URL}/app/attachment/${taskId}/`;
+
+  let response: Response;
+  try {
+    response = await fetchWithAuth(url);
+  } catch (authErr) {
+    console.warn(`[task API] fetchWithAuth failed for task attachments ${taskId}, trying fetchWithTimeout:`, authErr);
+    response = await fetchWithTimeout(url);
+  }
+
+  const responseText = await response.text();
+  console.log(`[task API] Get attachments response status for task ${taskId}:`, response.status);
+  console.log(`[task API] Get attachments response body for task ${taskId}:`, responseText);
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      return [];
+    }
+    throw new Error(`Failed to fetch task attachments for task ${taskId}. Status: ${response.status}`);
+  }
+
+  try {
+    const data = JSON.parse(responseText);
+    return Array.isArray(data) ? data : (data.results || data.attachments || []);
+  } catch (e) {
+    throw new Error(`Failed to parse attachments JSON for task ${taskId}. Content: ${responseText}`);
+  }
+};
 
 // Upload file to backend attachment endpoint using multipart/form-data, linking it to taskId
 export const uploadAttachment = async (uri: string, taskId: number): Promise<number> => {
