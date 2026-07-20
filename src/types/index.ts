@@ -114,3 +114,53 @@ export interface Task {
   backend_id?: number;
   attachmentUris?: string[] | null;
 }
+
+// ─── Backend API task models ──────────────────────────────────────────────────
+export interface Category {
+  id: number;
+  name: string;
+}
+
+export interface PaymentPreference {
+  id: number;
+  name: string;
+}
+
+export interface Status {
+  id: number;
+  name: string;
+}
+
+export interface BackendTask {
+  id?: number;
+  subject: string;
+  body: string;
+  price: number;
+  created_by: number;
+  preferred_time: string;
+  location_id: number;
+  status_id: number;
+  payment_preference_id: number;
+  accurately_estimated: number;
+  category_id: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  text: string;
+  sender: 'user' | 'professional';
+  time: string;
+}
+
+export interface Pro {
+  id: string;
+  name: string;
+  category: string;
+  rating: number;
+  reviews: number;
+  location: string;
+  price: string;
+  timeEstimate: string;
+  policeVerified: boolean;
+  avatar: string;
+}

@@ -29,9 +29,9 @@ import { useAuth } from '@/context/auth';
 import { usePostJob, Task } from '@/context/post-job';
 import ActiveTaskScreen from '@/pages/client/ActiveTaskScreen';
 import DrawerPanel from '@/components/client/DrawerPanel';
-import TaskHistoryModal from '@/components/client/TaskHistoryModal';
 import SearchLocationModal from '@/components/client/SearchLocationModal';
 import PinAdjusterModal from '@/components/client/PinAdjusterModal';
+import { Pro } from '@/types';
 
 const { width, height } = Dimensions.get('window');
 
@@ -54,18 +54,7 @@ interface HomeViewProps {
   onSelectPro?: (proName: string) => void;
 }
 
-export interface Pro {
-  id: string;
-  name: string;
-  category: string;
-  rating: number;
-  reviews: number;
-  location: string;
-  price: string;
-  timeEstimate: string;
-  policeVerified: boolean;
-  avatar: string;
-}
+
 
 export const MOCK_PROS: Pro[] = [
   {
@@ -491,7 +480,6 @@ export default function HomeView({ userName }: HomeViewProps) {
 
   // Navigation / Drawer / History Modals State
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [historyVisible, setHistoryVisible] = useState(false);
   const [viewActiveTaskScreen, setViewActiveTaskScreen] = useState(false);
 
   const drawerAnim = useRef(new Animated.Value(-width * 0.75)).current;
@@ -1381,7 +1369,7 @@ export default function HomeView({ userName }: HomeViewProps) {
         user={user}
         activeTask={activeTask}
         onOpenActiveRequest={() => setViewActiveTaskScreen(true)}
-        onOpenHistory={() => setHistoryVisible(true)}
+        onOpenHistory={() => router.push('/task-history')}
         onSignOut={handleSignOut}
         drawerAnim={drawerAnim}
         insets={insets}
@@ -1395,13 +1383,7 @@ export default function HomeView({ userName }: HomeViewProps) {
         </Modal>
       )}
 
-      {/* 8. TASK HISTORY MODAL OVERLAY */}
-      <TaskHistoryModal
-        visible={historyVisible}
-        onClose={() => setHistoryVisible(false)}
-        taskHistory={taskHistory}
-        clearHistory={clearHistory}
-      />
+
 
       {/* 9. SEARCH LOCATION MODAL */}
       <SearchLocationModal

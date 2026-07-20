@@ -3,15 +3,8 @@ import { Alert } from 'react-native';
 import { useAuth } from './auth';
 import { createTaskChain, getStatusesFromBackend, updateTaskStatusOnBackend } from '@/services/task';
 import useTaskStore from '../store/taskStore';
-import { Bid, Task } from '@/types';
-export { Bid, Task };
-
-export interface ChatMessage {
-  id: string;
-  text: string;
-  sender: 'user' | 'professional';
-  time: string;
-}
+import { Bid, Task, ChatMessage } from '@/types';
+export { Bid, Task, ChatMessage };
 
 interface PostJobContextType {
   activeTask: Task | null;

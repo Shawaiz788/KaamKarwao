@@ -20,7 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { loginUser } from '@/services/user';
 import { useAuth } from '@/context/auth';
-import { USER_TYPE_PRO } from '../../constants/userTypes';
+import { USER_TYPE_PRO } from '@/constants/userTypes';
 
 const signInSchema = z.object({
     phone: z

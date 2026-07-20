@@ -259,16 +259,20 @@ export default function JobDetailBottomSheet({
         extrapolate: 'clamp',
     });
 
+    const isExpanded = sheetState === 'expanded';
+
     const sheetStyle = [
         styles.sheet,
         {
             transform: [{ translateY }],
             bottom: keyboardHeight,
-            paddingTop: sheetState === 'expanded' ? insets.top : 0,
+            paddingTop: isExpanded ? insets.top : 0,
+            borderTopLeftRadius: isExpanded ? 0 : 24,
+            borderTopRightRadius: isExpanded ? 0 : 24,
         }
     ];
 
-    const scrollViewMaxH = (sheetState === 'expanded' ? SCREEN_H - insets.top : HALF_H) - 60 - keyboardHeight;
+    const scrollViewMaxH = (isExpanded ? SCREEN_H - insets.top : HALF_H) - 60 - keyboardHeight;
 
     return (
         <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
@@ -276,6 +280,21 @@ export default function JobDetailBottomSheet({
             <Animated.View style={[styles.scrim, { opacity: scrimOpacity }]}>
                 <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
             </Animated.View>
+
+            {/* White status bar filler — covers safe area on Android when fully expanded */}
+            {isExpanded && insets.top > 0 && (
+                <View
+                    style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: insets.top,
+                        backgroundColor: Colors.white,
+                        zIndex: 999,
+                    }}
+                />
+            )}
 
             {/* Sheet */}
             <Animated.View style={sheetStyle}>
@@ -406,8 +425,12 @@ export default function JobDetailBottomSheet({
                                             if (!isWaiting) {
                                                 if (selectedBid === opt.key) {
                                                     setSelectedBid(null);
+                                                    setCustomAmount('');
                                                 } else {
                                                     setSelectedBid(opt.key);
+                                                    if (opt.key === 'plus5') setCustomAmount(plus5.toString());
+                                                    if (opt.key === 'plus10') setCustomAmount(plus10.toString());
+                                                    if (opt.key === 'plus15') setCustomAmount(plus15.toString());
                                                 }
                                             }
                                         }}

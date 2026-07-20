@@ -20,11 +20,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createUser, verifyUserOnBackend, loginUser } from '@/services/user';
 import { useMutation } from '@tanstack/react-query';
-import { City, getCities, getOrCreateLocationChain } from '@/services/location';
-import { COUNTRY_DATA, getCountryFromPhone } from '../../constants/locationData';
+import { City, getCities, Area, getAreas, getOrCreateLocationChain } from '@/services/location';
+import { COUNTRY_DATA, getCountryFromPhone } from '@/constants/locationData';
 import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
-import { USER_TYPE_PRO } from '../../constants/userTypes';
+import { USER_TYPE_PRO } from '@/constants/userTypes';
 
 type Role = 'client' | 'provider';
 
@@ -87,12 +87,13 @@ export default function ProfileSetupScreen() {
   const params = useLocalSearchParams();
 
   const countryName = getCountryFromPhone(user?.phoneNumber);
-  const countryCities = COUNTRY_DATA[countryName]?.cities || COUNTRY_DATA['Pakistan'].cities;
 
   // Component States
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [selectedCity, setSelectedCity] = useState<string>(countryCities[0] || 'Lahore');
+  const [citiesList, setCitiesList] = useState<City[]>([]);
+  const [areasList, setAreasList] = useState<Area[]>([]);
+  const [selectedCity, setSelectedCity] = useState<string>('Lahore');
   const [role, setRole] = useState<Role>('client');
   const [gender, setGender] = useState<string>('male');
   const [isLoading, setIsLoading] = useState(false);
@@ -115,8 +116,32 @@ export default function ProfileSetupScreen() {
   const [mapCoords, setMapCoords] = useState<{ latitude: number, longitude: number } | null>(null);
   const mapWebViewRef = useRef<WebView>(null);
 
-  const cityAreas = selectedCity
-    ? (COUNTRY_DATA[countryName]?.areas[selectedCity] || [])
+  // Load dynamic cities and areas from backend on mount
+  useEffect(() => {
+    const loadAddressData = async () => {
+      try {
+        console.log('[profile-setup] Loading cities and areas from backend API...');
+        const cities = await getCities();
+        const areas = await getAreas();
+        setCitiesList(cities);
+        setAreasList(areas);
+
+        if (cities.length > 0) {
+          // If cities are returned, default to the first one
+          setSelectedCity(cities[0].name);
+        }
+      } catch (err) {
+        console.error('[profile-setup] Failed to load cities/areas from backend:', err);
+      }
+    };
+    loadAddressData();
+  }, []);
+
+  const countryCities = citiesList.map(c => c.name);
+
+  const matchedCityObj = citiesList.find(c => c.name.toLowerCase() === selectedCity.toLowerCase());
+  const cityAreas = matchedCityObj
+    ? areasList.filter(a => a.city === matchedCityObj.id).map(a => a.name)
     : [];
 
   const fetchGpsLocation = async (silent = false) => {

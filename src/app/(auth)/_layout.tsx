@@ -1,7 +1,7 @@
 import { Redirect, Stack } from 'expo-router';
 import { useAuth } from '@/context/auth';
 import { View, ActivityIndicator } from 'react-native';
-import { USER_TYPE_PRO } from '../../constants/userTypes';
+import { USER_TYPE_PRO } from '@/constants/userTypes';
 
 export default function AuthLayout() {
     const { user, initializing } = useAuth();

@@ -4,29 +4,10 @@ const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 const API_URL = BASE_URL ? BASE_URL.replace(/\/$/, '') : '';
 
 
-export interface Category {
-  id: number;
-  name: string;
-}
+import { Category, PaymentPreference, Status, BackendTask } from '@/types';
 
-export interface PaymentPreference {
-  id: number;
-  name: string;
-}
-
-export interface Task {
-  id?: number;
-  subject: string;
-  body: string;
-  price: number;
-  created_by: number;
-  preferred_time: string;
-  location_id: number;
-  status_id: number;
-  payment_preference_id: number;
-  accurately_estimated: number;
-  category_id: number;
-}
+export { Category, PaymentPreference, Status };
+export type Task = BackendTask;
 
 export interface TaskChainInput {
   categoryId: number;
@@ -194,10 +175,7 @@ export const createTaskChain = async (input: TaskChainInput): Promise<Task> => {
   return createdTask;
 };
 
-export interface Status {
-  id: number;
-  name: string;
-}
+
 
 export const getStatusesFromBackend = async (token?: string): Promise<Status[]> => {
   const headers: Record<string, string> = {};
