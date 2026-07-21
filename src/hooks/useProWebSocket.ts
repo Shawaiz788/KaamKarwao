@@ -33,7 +33,7 @@ type WSMessage =
     }
     | { type: 'heartbeat'; task?: null }
     | {
-        type: 'task_deleted';
+        type: 'task_deleted' | 'task_cancelled' | 'task_assigned' | 'task_accepted' | 'bidding_closed' | 'task_closed';
         task_id?: number;
         worker_id?: number;
         id?: number;
@@ -239,7 +239,7 @@ export function useProWebSocket({
                         setJobs((prev) => prev.filter((j) => Number(j.id) !== Number(closedTaskId)));
 
                         if (
-                            (msg.type === 'task_deleted') &&
+                            (msg.type === 'task_deleted' || msg.type === 'task_cancelled') &&
                             msgWorkerId &&
                             userId &&
                             String(msgWorkerId) === String(userId)

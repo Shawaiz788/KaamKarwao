@@ -204,22 +204,12 @@ export default function ProLiveJobsView() {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [useMockData, setUseMockData] = useState(false); // Fallback while WS not configured
 
-    const handleTaskCancelledByCustomer = useCallback((cancelledTaskId: number) => {
-        console.log(`[ProLiveJobsView] handleTaskCancelledByCustomer triggered for taskId=${cancelledTaskId}`);
-        const targetId = Number(cancelledTaskId);
-        if (assignedJob && Number(assignedJob.id) === targetId) {
-            // Show the cancelled summary in the modal, don't just dismiss it
-            setIsCancelledJob(true);
-            setActiveModalJob(assignedJob);
-            setActiveModalVisible(true);
-            setAssignedJob(null);
-        }
-    }, [assignedJob]);
-
     const { jobs: wsJobs, wsStatus, hasNoJobs, refresh: wsRefresh } = useProWebSocket({
         userId: user?.id,
         isOnline,
-        onTaskCancelledForWorker: handleTaskCancelledByCustomer,
+        onTaskCancelledForWorker: (taskId, workerId) => {
+            handleTaskCancelledByCustomer(taskId);
+        },
     });
 
     const { placeBid, removeBid, getActiveBid, activeJobIds } = useActiveBids(10);
@@ -228,6 +218,36 @@ export default function ProLiveJobsView() {
     const displayJobs: LiveJob[] = (wsJobs.length > 0)
         ? wsJobs.filter((j) => !assignedJob || Number(j.id) !== Number(assignedJob.id))
         : (isOnline && useMockData ? MOCK_JOBS.filter((j) => !assignedJob || Number(j.id) !== Number(assignedJob.id)) : []);
+
+    const handleTaskCancelledByCustomer = useCallback((cancelledTaskId: number) => {
+        console.log(`[ProLiveJobsView] handleTaskCancelledByCustomer triggered for taskId=${cancelledTaskId}`);
+        const targetId = Number(cancelledTaskId);
+
+        // Always clear assignedJob to immediately remove top "Active Job in Progress" indicator banner
+        setAssignedJob(null);
+
+        // Find cancelled job details from assignedJob, activeModalJob, displayJobs, or fallback
+        let job = (assignedJob && Number(assignedJob.id) === targetId ? assignedJob : null)
+            || (activeModalJob && Number(activeModalJob.id) === targetId ? activeModalJob : null)
+            || displayJobs.find((j) => Number(j.id) === targetId)
+            || wsJobs.find((j) => Number(j.id) === targetId);
+
+        if (!job) {
+            job = {
+                id: targetId,
+                title: `Task #${targetId}`,
+                category: 'Service',
+                budget: 0,
+                location_name: 'Customer Location',
+                customer_name: 'Customer',
+                description: 'This task was cancelled by the customer.',
+            };
+        }
+
+        setIsCancelledJob(true);
+        setActiveModalJob(job);
+        setActiveModalVisible(true);
+    }, [assignedJob, activeModalJob, displayJobs, wsJobs]);
 
     const isJobsAvailable = isOnline && displayJobs.length > 0;
 
