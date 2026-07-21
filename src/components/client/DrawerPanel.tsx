@@ -46,7 +46,9 @@ export default function DrawerPanel({
   useEffect(() => {
     if (!user?.id || !open) return;
     let isMounted = true;
-    setLoadingReviews(true);
+    if (reviewCount === null) {
+      setLoadingReviews(true);
+    }
 
     getCustomerReviews(user.id)
       .then((reviews) => {
@@ -56,7 +58,7 @@ export default function DrawerPanel({
       })
       .catch((err) => {
         console.error('[DrawerPanel] Error fetching customer reviews:', err);
-        if (isMounted) {
+        if (isMounted && reviewCount === null) {
           setReviewCount(0);
         }
       })

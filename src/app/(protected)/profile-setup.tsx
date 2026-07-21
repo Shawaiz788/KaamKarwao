@@ -116,18 +116,21 @@ export default function ProfileSetupScreen() {
   const [mapCoords, setMapCoords] = useState<{ latitude: number, longitude: number } | null>(null);
   const mapWebViewRef = useRef<WebView>(null);
 
+  const hasFetched = useRef(false);
+
   // Load dynamic cities and areas from backend on mount
   useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+
     const loadAddressData = async () => {
       try {
         console.log('[profile-setup] Loading cities and areas from backend API...');
-        const cities = await getCities();
-        const areas = await getAreas();
-        setCitiesList(cities);
-        setAreasList(areas);
+        const [cities, areas] = await Promise.all([getCities(), getAreas()]);
+        setCitiesList(cities || []);
+        setAreasList(areas || []);
 
-        if (cities.length > 0) {
-          // If cities are returned, default to the first one
+        if (cities && cities.length > 0) {
           setSelectedCity(cities[0].name);
         }
       } catch (err) {
@@ -141,8 +144,14 @@ export default function ProfileSetupScreen() {
 
   const matchedCityObj = citiesList.find(c => c.name.toLowerCase() === selectedCity.toLowerCase());
   const cityAreas = matchedCityObj
-    ? areasList.filter(a => a.city === matchedCityObj.id).map(a => a.name)
-    : [];
+    ? areasList
+        .filter((a: any) => {
+          const areaCityId = typeof a.city === 'object' ? a.city?.id : (a.city ?? a.city_id);
+          if (areaCityId === undefined || areaCityId === null) return true;
+          return String(areaCityId) === String(matchedCityObj.id);
+        })
+        .map(a => a.name)
+    : areasList.map(a => a.name);
 
   const fetchGpsLocation = async (silent = false) => {
     setLoadingGps(true);

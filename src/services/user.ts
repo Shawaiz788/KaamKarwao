@@ -247,8 +247,16 @@ export const updateProfilePic = async (
     }
 };
 
-// Fetch reviews received by customer from backend
-export const getCustomerReviews = async (userId: number): Promise<any[]> => {
+const customerReviewsCache = new Map<number, { data: any[]; timestamp: number }>();
+const REVIEWS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
+
+// Fetch reviews received by customer from backend (cached in memory)
+export const getCustomerReviews = async (userId: number, forceRefresh = false): Promise<any[]> => {
+    const cached = customerReviewsCache.get(userId);
+    if (!forceRefresh && cached && (Date.now() - cached.timestamp < REVIEWS_CACHE_TTL)) {
+        return cached.data;
+    }
+
     console.log(`[user API] Fetching customer reviews for user ID: ${userId}`);
     const response = await fetchWithAuth(`${API_URL}/app/review/customer/${userId}/`);
     const responseText = await response.text();
@@ -260,7 +268,9 @@ export const getCustomerReviews = async (userId: number): Promise<any[]> => {
 
     try {
         const data = JSON.parse(responseText);
-        return Array.isArray(data) ? data : (data.results || data.reviews || []);
+        const reviews = Array.isArray(data) ? data : (data.results || data.reviews || []);
+        customerReviewsCache.set(userId, { data: reviews, timestamp: Date.now() });
+        return reviews;
     } catch (e) {
         throw new Error(`Failed to parse customer reviews response. Content: ${responseText}`);
     }

@@ -190,7 +190,7 @@ export default function SavedAddressesScreen() {
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </Pressable>
-          <Text style={styles.headerTitle}>Saved Addresses</Text>
+          <Text style={styles.headerTitle}>Saved Address</Text>
         </View>
       </View>
 

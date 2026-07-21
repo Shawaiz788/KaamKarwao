@@ -7,8 +7,17 @@ export { Area };
 export const getAreas = async (): Promise<Area[]> => {
     console.log('[area API] Fetching areas from API...');
     const response = await fetchWithTimeout(`${API_URL}/app/area/`);
-    return response.json();
+
+    // 1. Await the JSON promise into a variable
+    const data = await response.json();
+
+    // 2. Log the actual data
+    console.log('[area API] response', data);
+
+    // 3. Return the data variable
+    return data;
 };
+
 
 export const createArea = async (cityId: number, name: string): Promise<Area> => {
     const response = await fetchWithTimeout(`${API_URL}/app/area/`, {

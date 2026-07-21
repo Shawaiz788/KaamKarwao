@@ -25,7 +25,7 @@ export default function ProfileView({ userName, userEmail, onSignOut, userAvatar
   const profileOptions = [
     { icon: 'person-outline', label: 'Edit Profile', color: '#1F2937' },
     { icon: 'calendar-outline', label: 'My Bookings', color: '#1F2937' },
-    { icon: 'location-outline', label: 'Saved Addresses', color: '#1F2937' },
+    { icon: 'location-outline', label: 'Saved Address', color: '#1F2937' },
     { icon: 'card-outline', label: 'Payment Methods', color: '#1F2937' },
     { icon: 'shield-checkmark-outline', label: 'Security & Privacy', color: '#1F2937' },
     { icon: 'help-circle-outline', label: 'Support & Help', color: '#1F2937' },
