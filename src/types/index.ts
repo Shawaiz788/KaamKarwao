@@ -70,6 +70,8 @@ export interface ProEarnings {
   total_earning: number;
   jobs_done: number;
   updated_at: string;
+  daily_jobs_done: number;
+
 }
 
 // ─── Customer Profile Types ──────────────────────────────────────────────────

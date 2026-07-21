@@ -15,7 +15,8 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth';
 import { Colors } from '@/constants/colors';
 import ProDrawerPanel from '@/components/pro/ProDrawerPanel';
-import { getProEarnings, ProEarnings } from '@/services/proEarnings';
+import { getProEarnings } from '@/services/proEarnings';
+import { ProEarnings } from '@/types';
 
 const { width } = Dimensions.get('window');
 
@@ -33,10 +34,10 @@ const CHART_DATA = [
 const MAX_CHART_VALUE = Math.max(...CHART_DATA.map((d) => d.value));
 
 const RECENT_JOBS = [
-    { id: '1', title: 'AC repair service',  address: 'Phase 2, Industrial Area',  amount: 'Rs 8,500',  icon: 'snow',     color: '#3B82F6' },
-    { id: '2', title: 'Appliance Repair',   address: 'Model Town, Phase 2',       amount: 'Rs 6,000',  icon: 'flash',    color: '#F97316' },
-    { id: '3', title: 'Home Cleaning',      address: 'Green Enclave, Phase 1',    amount: 'Rs 4,200',  icon: 'sparkles', color: '#EAB308' },
-    { id: '4', title: 'Painting Service',   address: 'Urban Vistas, Phase 3',     amount: 'Rs 10,500', icon: 'brush',    color: '#EC4899' },
+    { id: '1', title: 'AC repair service', address: 'Phase 2, Industrial Area', amount: 'Rs 8,500', icon: 'snow', color: '#3B82F6' },
+    { id: '2', title: 'Appliance Repair', address: 'Model Town, Phase 2', amount: 'Rs 6,000', icon: 'flash', color: '#F97316' },
+    { id: '3', title: 'Home Cleaning', address: 'Green Enclave, Phase 1', amount: 'Rs 4,200', icon: 'sparkles', color: '#EAB308' },
+    { id: '4', title: 'Painting Service', address: 'Urban Vistas, Phase 3', amount: 'Rs 10,500', icon: 'brush', color: '#EC4899' },
 ];
 
 // ─── Subcomponents ────────────────────────────────────────────────────────────
@@ -99,17 +100,18 @@ export default function ProDashboardView() {
 
     useEffect(() => {
         const fetchEarnings = async () => {
+            if (!user?.id) return;
             try {
-                const data = await getProEarnings();
+                const data = await getProEarnings(user.id);
                 setEarnings(data);
-            } catch (err) {
-                console.error('[ProDashboardView] Error fetching earnings:', err);
+                // } catch (err) {
+                //     console.error('[ProDashboardView] Error fetching earnings:', err);
             } finally {
                 setLoadingEarnings(false);
             }
         };
         fetchEarnings();
-    }, []);
+    }, [user?.id]);
 
     const initials = user?.displayName
         ? user.displayName.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2)

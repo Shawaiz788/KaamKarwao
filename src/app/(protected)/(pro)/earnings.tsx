@@ -13,17 +13,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
-import { getProEarnings, ProEarnings } from '@/services/proEarnings';
+import { getProEarnings } from '@/services/proEarnings';
+import { ProEarnings } from '@/types';
+import { useAuth } from '@/context/auth';
 
 export default function ProEarningsRoute() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const [earnings, setEarnings] = useState<ProEarnings | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchEarnings = async (showRefresher = false) => {
+    if (!user?.id) return;
     if (showRefresher) {
       setRefreshing(true);
     } else {
@@ -31,7 +35,7 @@ export default function ProEarningsRoute() {
     }
     setError(null);
     try {
-      const data = await getProEarnings();
+      const data = await getProEarnings(user.id);
       setEarnings(data);
     } catch (err: any) {
       console.error('[ProEarnings] Error fetching earnings details:', err);
@@ -43,8 +47,10 @@ export default function ProEarningsRoute() {
   };
 
   useEffect(() => {
-    fetchEarnings();
-  }, []);
+    if (user?.id) {
+      fetchEarnings();
+    }
+  }, [user?.id]);
 
   const onRefresh = () => {
     fetchEarnings(true);
