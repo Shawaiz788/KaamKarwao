@@ -24,14 +24,28 @@ import { sendQuickBidViaWebSocket, useBiddingWebSocket } from '@/hooks/useBiddin
 import JobCard from '@/components/pro/JobCard';
 import JobDetailBottomSheet from '@/components/pro/JobDetailBottomSheet';
 import ProDrawerPanel from '@/components/pro/ProDrawerPanel';
+import ProActiveTaskModal from '@/components/pro/ProActiveTaskModal';
 import { useActiveBids } from '@/hooks/useActiveBids';
 
-function ActiveBidListener({ jobId, userId }: { jobId: number; userId: number | undefined }) {
+function ActiveBidListener({
+    jobId,
+    userId,
+    onAccepted,
+}: {
+    jobId: number;
+    userId: number | undefined;
+    onAccepted: (jobId: number) => void;
+}) {
     useBiddingWebSocket({
         taskId: jobId,
         userId,
         isCustomer: false,
         enabled: Boolean(jobId && userId),
+        onBidAccepted: (bid) => {
+            if (String(bid.user_id) === String(userId)) {
+                onAccepted(jobId);
+            }
+        },
     });
     return null;
 }
@@ -176,6 +190,8 @@ export default function ProLiveJobsView() {
     const [isOnline, setIsOnline] = useState(false);
     const [selectedJob, setSelectedJob] = useState<LiveJob | null>(null);
     const [sheetVisible, setSheetVisible] = useState(false);
+    const [activeModalJob, setActiveModalJob] = useState<LiveJob | null>(null);
+    const [activeModalVisible, setActiveModalVisible] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [useMockData, setUseMockData] = useState(true); // Fallback while WS not configured
 
@@ -198,6 +214,15 @@ export default function ProLiveJobsView() {
         wsRefresh();
         setTimeout(() => setIsRefreshing(false), 1500);
     }, [wsRefresh]);
+
+    const handleJobAcceptedForPro = useCallback((jobId: number) => {
+        const job = displayJobs.find((j) => j.id === jobId) || selectedJob;
+        if (job) {
+            setActiveModalJob(job);
+            setActiveModalVisible(true);
+            setSheetVisible(false);
+        }
+    }, [displayJobs, selectedJob]);
 
     const handleQuickBid = (job: LiveJob, amount: number) => {
         console.log(`[ProLiveJobsView] Quick bid: job=${job.id}, amount=${amount}`);
@@ -339,8 +364,15 @@ export default function ProLiveJobsView() {
             />
             {/* Active Bids Socket Listeners (for quick bids feedback) */}
             {activeJobIds.map((id) => (
-                <ActiveBidListener key={id} jobId={id} userId={user?.id} />
+                <ActiveBidListener key={id} jobId={id} userId={user?.id} onAccepted={handleJobAcceptedForPro} />
             ))}
+
+            {/* Pro Active Task Modal */}
+            <ProActiveTaskModal
+                job={activeModalJob}
+                isVisible={activeModalVisible}
+                onClose={() => setActiveModalVisible(false)}
+            />
         </View>
     );
 }

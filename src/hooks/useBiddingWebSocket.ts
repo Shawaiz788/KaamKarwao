@@ -36,6 +36,7 @@ export interface UseBiddingWebSocketOptions {
     isCustomer?: boolean;
     enabled?: boolean;
     token?: string;
+    onBidAccepted?: (bid: BidsWSBid) => void;
 }
 
 export interface UseBiddingWebSocketResult {
@@ -105,6 +106,7 @@ export function useBiddingWebSocket({
     isCustomer = false,
     enabled = true,
     token,
+    onBidAccepted,
 }: UseBiddingWebSocketOptions): UseBiddingWebSocketResult {
     const [bids, setBids] = useState<BidsWSBid[]>([]);
     const [isBiddingClosed, setIsBiddingClosed] = useState(false);
@@ -126,6 +128,9 @@ export function useBiddingWebSocket({
 
     const tokenRef = useRef(token);
     tokenRef.current = token;
+
+    const onBidAcceptedRef = useRef(onBidAccepted);
+    onBidAcceptedRef.current = onBidAccepted;
 
     const clearRetryTimer = () => {
         if (retryTimerRef.current) {
@@ -207,6 +212,7 @@ export function useBiddingWebSocket({
 
                             setWinningBid(accepted);
                             setIsBiddingClosed(true);
+                            onBidAcceptedRef.current?.(accepted);
 
                             const currentUserId = userIdRef.current;
                             const amICustomer = isCustomerRef.current;

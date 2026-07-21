@@ -140,85 +140,83 @@ export function useProWebSocket({
                         return [newJob, ...prev];
                     });
 
-                    // Resolve customer details asynchronously using created_by (customer ID)
-                    if (t.created_by) {
-                        getCustomerProfile(t.created_by)
-                            .then((profile) => {
-                                const fullName = [profile.first_name, profile.last_name]
-                                    .filter(Boolean)
-                                    .join(' ')
-                                    .trim();
-                                const customerName = fullName || t.customer_name || 'Customer';
-                                const customerImage = normalizeImageUrl(profile.image);
+                    // Batch fetch customer profile, location, and attachments concurrently via Promise.allSettled
+                    (async () => {
+                        const [profileResult, locationResult, attachmentsResult] = await Promise.allSettled([
+                            t.created_by ? getCustomerProfile(t.created_by) : Promise.resolve(null),
+                            t.location_id ? getLocationById(t.location_id) : Promise.resolve(null),
+                            t.id ? getTaskAttachments(t.id) : Promise.resolve([]),
+                        ]);
 
-                                setJobs((prev) =>
-                                    prev.map((j) =>
-                                        j.id === t.id
-                                            ? {
-                                                ...j,
-                                                customer_id: profile.id,
-                                                customer_name: customerName,
-                                                customer_rating: profile.overall_rating,
-                                                customer_image: customerImage,
-                                                customer_profile: profile,
-                                                is_customer_loading: false,
-                                            }
-                                            : j
-                                    )
-                                );
+                        if (!isMountedRef.current) return;
+
+                        let updatedCustomerProfile: any = null;
+                        let updatedCustomerName: string | undefined = undefined;
+                        let updatedCustomerImage: string | undefined = undefined;
+                        let updatedCustomerRating: number | undefined = undefined;
+                        let updatedLocationName: string | undefined = undefined;
+                        let updatedAttachments: any[] = t.attachments || [];
+
+                        // Process Customer Profile
+                        if (profileResult.status === 'fulfilled' && profileResult.value) {
+                            const profile = profileResult.value;
+                            const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ').trim();
+                            updatedCustomerName = fullName || t.customer_name || 'Customer';
+                            updatedCustomerImage = normalizeImageUrl(profile.image);
+                            updatedCustomerRating = profile.overall_rating;
+                            updatedCustomerProfile = profile;
+                        }
+
+                        // Process Location
+                        if (locationResult.status === 'fulfilled' && locationResult.value) {
+                            const loc = locationResult.value;
+                            updatedLocationName = loc.formatted_address || 'Unknown Location';
+                        }
+
+                        // Process Attachments
+                        let hasAttachments = false;
+                        if (attachmentsResult.status === 'fulfilled' && Array.isArray(attachmentsResult.value) && attachmentsResult.value.length > 0) {
+                            updatedAttachments = attachmentsResult.value;
+                            hasAttachments = true;
+                        }
+
+                        // Batch update state in a single call
+                        setJobs((prev) =>
+                            prev.map((j) => {
+                                if (j.id !== t.id) return j;
+                                return {
+                                    ...j,
+                                    customer_name: updatedCustomerName ?? j.customer_name,
+                                    customer_rating: updatedCustomerRating ?? j.customer_rating,
+                                    customer_image: updatedCustomerImage ?? j.customer_image,
+                                    customer_profile: updatedCustomerProfile ?? j.customer_profile,
+                                    is_customer_loading: false,
+                                    location_name: updatedLocationName ?? (t.location_id ? 'Location not found' : j.location_name),
+                                    is_location_loading: false,
+                                    attachments: updatedAttachments,
+                                };
                             })
-                            .catch((err) => {
-                                console.warn(`[useProWebSocket] Failed to fetch customer profile for ID ${t.created_by}:`, err);
-                                setJobs((prev) =>
-                                    prev.map((j) =>
-                                        j.id === t.id ? { ...j, is_customer_loading: false } : j
-                                    )
-                                );
-                            });
-                    }
+                        );
 
-                    // Resolve location asynchronously
-                    if (t.location_id) {
-                        getLocationById(t.location_id)
-                            .then((loc) => {
-                                const address = loc.formatted_address || 'Unknown Location';
-                                setJobs((prev) =>
-                                    prev.map((j) => (j.id === t.id ? { ...j, location_name: address, is_location_loading: false } : j))
-                                );
-                            })
-                            .catch(() => {
-                                setJobs((prev) =>
-                                    prev.map((j) =>
-                                        j.id === t.id ? { ...j, location_name: 'Location not found', is_location_loading: false } : j
-                                    )
-                                );
-                            });
-                    }
-
-                    // Resolve attachments asynchronously using task ID (with delayed retry if initial fetch is empty)
-                    if (t.id) {
-                        const fetchAttachmentsWithRetry = (attempt: number = 1) => {
-                            getTaskAttachments(t.id)
-                                .then((fetchedAttachments) => {
-                                    if (fetchedAttachments && Array.isArray(fetchedAttachments) && fetchedAttachments.length > 0) {
-                                        setJobs((prev) =>
-                                            prev.map((j) => (j.id === t.id ? { ...j, attachments: fetchedAttachments } : j))
-                                        );
-                                    } else if (attempt === 1) {
-                                        // Initial response was empty — retry after 3 seconds in case client is still uploading
-                                        setTimeout(() => fetchAttachmentsWithRetry(2), 3000);
-                                    }
-                                })
-                                .catch((err) => {
-                                    console.warn(`[useProWebSocket] Failed to fetch attachments for task ${t.id} (attempt ${attempt}):`, err);
-                                    if (attempt === 1) {
-                                        setTimeout(() => fetchAttachmentsWithRetry(2), 3000);
-                                    }
-                                });
-                        };
-
-                        fetchAttachmentsWithRetry(1);
-                    }
+                        // 3-Second Retry for Attachments if initial fetch yielded no attachments
+                        if (!hasAttachments && t.id) {
+                            setTimeout(() => {
+                                if (!isMountedRef.current) return;
+                                console.log(`[useProWebSocket] Retrying attachment fetch for task ${t.id} after 3 seconds...`);
+                                getTaskAttachments(t.id)
+                                    .then((retryAttachments) => {
+                                        if (retryAttachments && Array.isArray(retryAttachments) && retryAttachments.length > 0) {
+                                            setJobs((prev) =>
+                                                prev.map((j) => (j.id === t.id ? { ...j, attachments: retryAttachments } : j))
+                                            );
+                                        }
+                                    })
+                                    .catch((err) => {
+                                        console.warn(`[useProWebSocket] 3s attachment retry failed for task ${t.id}:`, err);
+                                    });
+                            }, 3000);
+                        }
+                    })();
                 }
                 // 'ping' → no-op (heartbeat keepalive)
             } catch (e) {

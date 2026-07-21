@@ -200,7 +200,7 @@ export default function ActiveTaskScreen({ onBack }: ActiveTaskScreenProps) {
         )}
 
         {/* Bids List */}
-        {(activeTask.status === 'bidding' || bids.length > 0) && (
+        {activeTask.status !== 'accepted' && (activeTask.status === 'bidding' || bids.length > 0) && (
           <View style={styles.bidsSection}>
             <Text style={styles.sectionTitle}>Offers ({bids.length})</Text>
             {bids.length === 0 ? (
