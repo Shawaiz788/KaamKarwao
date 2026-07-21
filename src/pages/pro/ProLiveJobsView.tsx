@@ -34,7 +34,7 @@ function ActiveBidListener({
 }: {
     jobId: number;
     userId: number | undefined;
-    onAccepted: (jobId: number) => void;
+    onAccepted: (jobId: number, bid: any) => void;
 }) {
     useBiddingWebSocket({
         taskId: jobId,
@@ -42,8 +42,9 @@ function ActiveBidListener({
         isCustomer: false,
         enabled: Boolean(jobId && userId),
         onBidAccepted: (bid) => {
+            console.log(`[ActiveBidListener] bid_accepted for job ${jobId}, user_id=${bid.user_id}, myUserId=${userId}`);
             if (String(bid.user_id) === String(userId)) {
-                onAccepted(jobId);
+                onAccepted(jobId, bid);
             }
         },
     });
@@ -215,13 +216,29 @@ export default function ProLiveJobsView() {
         setTimeout(() => setIsRefreshing(false), 1500);
     }, [wsRefresh]);
 
-    const handleJobAcceptedForPro = useCallback((jobId: number) => {
-        const job = displayJobs.find((j) => j.id === jobId) || selectedJob;
-        if (job) {
-            setActiveModalJob(job);
-            setActiveModalVisible(true);
-            setSheetVisible(false);
+    const handleJobAcceptedForPro = useCallback((jobId: number, bid?: any) => {
+        console.log(`[ProLiveJobsView] handleJobAcceptedForPro called for jobId=${jobId}`, bid);
+        const targetId = Number(jobId);
+        let job = displayJobs.find((j) => Number(j.id) === targetId) || (selectedJob?.id === targetId ? selectedJob : null);
+
+        if (!job) {
+            job = {
+                id: targetId,
+                title: `Task #${targetId}`,
+                category: 'Service',
+                budget: bid?.price || 0,
+                location_name: 'Customer Location',
+                customer_name: bid?.user_name || 'Customer',
+                customer_rating: 4.8,
+                description: bid?.estimated_hours ? `Estimated duration: ${bid.estimated_hours} hours` : 'Job accepted',
+            };
+        } else if (bid?.price) {
+            job = { ...job, budget: bid.price };
         }
+
+        setActiveModalJob(job);
+        setActiveModalVisible(true);
+        setSheetVisible(false);
     }, [displayJobs, selectedJob]);
 
     const handleQuickBid = (job: LiveJob, amount: number) => {
