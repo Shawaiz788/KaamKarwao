@@ -255,3 +255,35 @@ export const updateTaskStatusOnBackend = async (
     return { message: responseText };
   }
 };
+
+export const assignTaskWorker = async (
+  taskId: number,
+  workerId: number,
+  token?: string
+): Promise<any> => {
+  console.log(`[task API] Assigning task ${taskId} to worker ${workerId}`);
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  const response = await fetchWithAuth(`${API_URL}/app/task/${taskId}/`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ worker_id: workerId }),
+  });
+  const responseText = await response.text();
+  console.log('[task API] Assign task worker response status:', response.status);
+
+  if (!response.ok) {
+    throw new Error(`Failed to assign worker to task on backend. Status: ${response.status}. Response: ${responseText}`);
+  }
+
+  try {
+    return JSON.parse(responseText);
+  } catch (e) {
+    return { message: responseText };
+  }
+};
+

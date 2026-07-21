@@ -19,6 +19,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { usePostJob, Bid } from '@/context/post-job';
+import { useAuth } from '@/context/auth';
+import { useBiddingWebSocket } from '@/hooks/useBiddingWebSocket';
 import { useRouter } from 'expo-router';
 
 const { width } = Dimensions.get('window');
@@ -30,15 +32,43 @@ interface ActiveTaskScreenProps {
 export default function ActiveTaskScreen({ onBack }: ActiveTaskScreenProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { user } = useAuth();
   const {
     activeTask,
-    bids,
+    bids: mockBids,
     activeChatMessages,
-    acceptBid,
+    acceptBid: contextAcceptBid,
     cancelTask,
     completeTask,
     sendActiveChatMessage,
   } = usePostJob();
+
+  const taskId = activeTask?.backend_id || (activeTask?.id && !isNaN(Number(activeTask.id)) ? Number(activeTask.id) : null);
+  const { bids: wsBids, acceptBid: sendWsAcceptBid } = useBiddingWebSocket({
+    taskId,
+    userId: user?.id,
+    isCustomer: true,
+    enabled: Boolean(activeTask && taskId && user?.id),
+    token: user?.token,
+  });
+
+  const bids: Bid[] = wsBids.length > 0
+    ? wsBids.map((b) => ({
+        id: String(b.id),
+        name: b.user_name || `Professional #${b.user_id}`,
+        avatar: b.user_avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=150',
+        rating: b.user_rating || 4.8,
+        reviewsCount: 45,
+        price: b.price,
+        timeEstimate: b.estimated_hours ? `${b.estimated_hours * 60} min` : '15 min',
+        message: b.estimated_hours ? `Estimated duration: ${b.estimated_hours} hours` : 'Ready to perform task',
+      }))
+    : mockBids;
+
+  const handleAcceptBid = (bidId: string) => {
+    sendWsAcceptBid(bidId);
+    contextAcceptBid(bidId);
+  };
 
   const [chatVisible, setChatVisible] = useState(false);
   const [chatInput, setChatInput] = useState('');
@@ -202,7 +232,7 @@ export default function ActiveTaskScreen({ onBack }: ActiveTaskScreenProps) {
                     </Pressable>
                     <Pressable
                       style={[styles.bidBtn, styles.acceptBtn]}
-                      onPress={() => acceptBid(bid.id)}
+                      onPress={() => handleAcceptBid(bid.id)}
                     >
                       <Text style={styles.acceptBtnText}>Accept Offer</Text>
                     </Pressable>

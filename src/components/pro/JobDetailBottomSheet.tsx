@@ -21,6 +21,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
 import { LiveJob } from '@/hooks/useProWebSocket';
+import { useBiddingWebSocket } from '@/hooks/useBiddingWebSocket';
+import { useAuth } from '@/context/auth';
 import { getCategoryStyle } from '@/store/categoryStore';
 import { getTaskAttachments } from '@/services/task';
 
@@ -158,6 +160,14 @@ export default function JobDetailBottomSheet({
     activeBid,
     onPlaceBid,
 }: JobDetailBottomSheetProps) {
+    const { user } = useAuth();
+    const { bids: wsBids, isBiddingClosed, placeBid: sendWsBid } = useBiddingWebSocket({
+        taskId: job?.id,
+        userId: user?.id,
+        isCustomer: false,
+        enabled: isVisible && Boolean(job?.id),
+        token: user?.token,
+    });
     const insets = useSafeAreaInsets();
     const translateY = useRef(new Animated.Value(CLOSED_Y)).current;
     const currentY = useRef(CLOSED_Y);
@@ -380,6 +390,11 @@ export default function JobDetailBottomSheet({
 
     const handlePlaceBid = () => {
         if (isWaiting || !job) return;
+        if (isBiddingClosed) {
+            showToast('This task has already been assigned.');
+            return;
+        }
+        sendWsBid(computedBidAmount, 1);
         showToast(`You have successfully placed a bid of Rs.${computedBidAmount.toLocaleString()}.`);
         Keyboard.dismiss();
         if (onPlaceBid) {

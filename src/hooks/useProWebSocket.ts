@@ -31,7 +31,7 @@ type WSMessage =
             attachments?: any[];
         };
     }
-    | { type: 'ping' | 'heartbeat'; task?: null };
+    | { type: 'heartbeat'; task?: null };
 
 export type WSStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
 
@@ -155,14 +155,14 @@ export function useProWebSocket({
                                     prev.map((j) =>
                                         j.id === t.id
                                             ? {
-                                                  ...j,
-                                                  customer_id: profile.id,
-                                                  customer_name: customerName,
-                                                  customer_rating: profile.overall_rating,
-                                                  customer_image: customerImage,
-                                                  customer_profile: profile,
-                                                  is_customer_loading: false,
-                                              }
+                                                ...j,
+                                                customer_id: profile.id,
+                                                customer_name: customerName,
+                                                customer_rating: profile.overall_rating,
+                                                customer_image: customerImage,
+                                                customer_profile: profile,
+                                                is_customer_loading: false,
+                                            }
                                             : j
                                     )
                                 );
