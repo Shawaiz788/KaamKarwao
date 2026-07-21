@@ -167,6 +167,18 @@ export default function JobDetailBottomSheet({
         isCustomer: false,
         enabled: isVisible && Boolean(job?.id),
         token: user?.token,
+        onBidAccepted: (bid) => {
+            console.log('[JobDetailBottomSheet] bid_accepted triggered via WS:', bid);
+            if (String(bid.user_id) === String(user?.id)) {
+                if (job) {
+                    onBidAccepted?.(job, bid.price);
+                }
+            }
+        },
+        onTaskAssignedToOther: (closedId) => {
+            console.log('[JobDetailBottomSheet] Task assigned to another pro via WS:', closedId);
+            onClose();
+        },
     });
     const insets = useSafeAreaInsets();
     const translateY = useRef(new Animated.Value(CLOSED_Y)).current;

@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 
-const TIMEOUT_MS = 10000; // 10 seconds timeout
+const TIMEOUT_MS = 15000; // 15 seconds timeout
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 const API_URL = BASE_URL ? BASE_URL.replace(/\/$/, '') : '';
 

@@ -17,7 +17,7 @@ export const getCities = async (): Promise<City[]> => {
 };
 
 export const createCity = async (countryId: number, name: string): Promise<City> => {
-    const response = await fetchWithTimeout(`${API_URL}/app/city`, {
+    const response = await fetchWithTimeout(`${API_URL}/app/city/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

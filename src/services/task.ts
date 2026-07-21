@@ -100,11 +100,10 @@ export const uploadAttachment = async (uri: string, taskId: number): Promise<num
   }
 };
 
-// Fetch categories list (authenticated with auto-retry)
+// Fetch categories list (authenticated)
 export const getCategoriesFromBackend = async (): Promise<Category[]> => {
-  const response = await fetchWithAuth(`${API_URL}/app/category`);
+  const response = await fetchWithAuth(`${API_URL}/app/category/`);
   const responseText = await response.text();
-  //console.log('[task API] Get categories response status:', response.status);
 
   if (!response.ok) {
     throw new Error(`Failed to fetch categories. Status: ${response.status}. Response: ${responseText}`);
@@ -113,15 +112,14 @@ export const getCategoriesFromBackend = async (): Promise<Category[]> => {
   return JSON.parse(responseText);
 };
 
-// Fetch payment preferences list (authenticated with auto-retry)
+// Fetch payment preferences list (authenticated)
 export const getPaymentPreferencesFromBackend = async (token?: string): Promise<PaymentPreference[]> => {
   const headers: Record<string, string> = {};
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  const response = await fetchWithAuth(`${API_URL}/app/paymentpref`, { headers });
+  const response = await fetchWithAuth(`${API_URL}/app/paymentpref/`, { headers });
   const responseText = await response.text();
-  //console.log('[task API] Get paymentpref response status:', response.status);
 
   if (!response.ok) {
     throw new Error(`Failed to fetch payment preferences. Status: ${response.status}. Response: ${responseText}`);
@@ -130,19 +128,34 @@ export const getPaymentPreferencesFromBackend = async (token?: string): Promise<
   return JSON.parse(responseText);
 };
 
-// Send create task request (authenticated with auto-retry)
+// Send create task request (authenticated with fallback retry)
 export const createTask = async (task: Omit<Task, 'id'>): Promise<Task> => {
-  const response = await fetchWithAuth(`${API_URL}/app/task`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(task),
-  });
+  console.log('[task API] Creating task on backend with payload:', JSON.stringify(task));
+  const url = `${API_URL}/app/task/`;
+
+  let response: Response;
+  try {
+    response = await fetchWithAuth(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(task),
+    });
+  } catch (authErr) {
+    console.warn('[task API] fetchWithAuth failed for createTask, trying fetchWithTimeout:', authErr);
+    response = await fetchWithTimeout(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(task),
+    });
+  }
 
   const responseText = await response.text();
-  //  console.log('[task API] Create task response status:', response.status);
-  //console.log('[task API] Create task response body:', responseText);
+  console.log('[task API] Create task response status:', response.status);
+  console.log('[task API] Create task response body:', responseText);
 
   if (!response.ok) {
     throw new Error(`Failed to create task. Status: ${response.status}. Response: ${responseText}`);
@@ -316,19 +329,33 @@ export const assignTaskWorker = async (
   token?: string
 ): Promise<any> => {
   console.log(`[task API] Assigning task ${taskId} to worker ${workerId}`);
+  const url = `${API_URL}/app/task/${taskId}/`;
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  const response = await fetchWithAuth(`${API_URL}/app/task/${taskId}/`, {
-    method: 'PATCH',
-    headers,
-    body: JSON.stringify({ worker_id: workerId }),
-  });
+
+  let response: Response;
+  try {
+    response = await fetchWithAuth(url, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ worker_id: workerId }),
+    });
+  } catch (err: any) {
+    console.warn(`[task API] First attempt for assignTaskWorker on task ${taskId} failed (${err?.message}), retrying...`);
+    response = await fetchWithAuth(url, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ worker_id: workerId }),
+    });
+  }
+
   const responseText = await response.text();
   console.log('[task API] Assign task worker response status:', response.status);
+  console.log('[task API] Assign task worker response body:', responseText);
 
   if (!response.ok) {
     throw new Error(`Failed to assign worker to task on backend. Status: ${response.status}. Response: ${responseText}`);

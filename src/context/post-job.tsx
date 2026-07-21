@@ -118,9 +118,9 @@ export function PostJobProvider({ children }: { children: React.ReactNode }) {
     setActiveChatMessages([]);
 
     const userId = user?.id;
-    const locationId = user?.location_id || user?.location?.id;
+    const locationId = user?.location_id || user?.location?.id || 1;
 
-    if (userId && locationId) {
+    if (userId) {
       // Execute backend creation chain in parallel/background
       (async () => {
         try {

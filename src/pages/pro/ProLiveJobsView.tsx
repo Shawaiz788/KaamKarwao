@@ -435,7 +435,8 @@ export default function ProLiveJobsView() {
                     placeBid(job.id, amount);
                 }}
                 onBidAccepted={(job, amount) => {
-                    setSheetVisible(false);
+                    console.log(`[ProLiveJobsView] onBidAccepted from detail sheet for job ${job.id}, amount ${amount}`);
+                    handleJobAcceptedForPro(job.id, { price: amount });
                 }}
             />
 
