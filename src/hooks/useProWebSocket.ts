@@ -218,6 +218,15 @@ export function useProWebSocket({
                         }
                     })();
                 }
+
+                const closedTypes = ['task_assigned', 'task_accepted', 'bidding_closed', 'task_closed', 'task_deleted'];
+                if (closedTypes.includes(msg.type)) {
+                    const closedTaskId = (msg as any).task_id || msg.task?.id || (msg as any).id;
+                    if (closedTaskId) {
+                        console.log(`[useProWebSocket] Removing closed/assigned task ${closedTaskId} from live jobs feed.`);
+                        setJobs((prev) => prev.filter((j) => Number(j.id) !== Number(closedTaskId)));
+                    }
+                }
                 // 'ping' → no-op (heartbeat keepalive)
             } catch (e) {
                 console.warn('[useProWebSocket] Failed to parse message:', e);

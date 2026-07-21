@@ -31,10 +31,12 @@ function ActiveBidListener({
     jobId,
     userId,
     onAccepted,
+    onAssignedToOther,
 }: {
     jobId: number;
     userId: number | undefined;
     onAccepted: (jobId: number, bid: any) => void;
+    onAssignedToOther: (jobId: number) => void;
 }) {
     useBiddingWebSocket({
         taskId: jobId,
@@ -46,6 +48,10 @@ function ActiveBidListener({
             if (String(bid.user_id) === String(userId)) {
                 onAccepted(jobId, bid);
             }
+        },
+        onTaskAssignedToOther: (closedId) => {
+            console.log(`[ActiveBidListener] Task ${closedId} assigned to another pro`);
+            onAssignedToOther(closedId);
         },
     });
     return null;
@@ -191,6 +197,7 @@ export default function ProLiveJobsView() {
     const [isOnline, setIsOnline] = useState(false);
     const [selectedJob, setSelectedJob] = useState<LiveJob | null>(null);
     const [sheetVisible, setSheetVisible] = useState(false);
+    const [assignedJob, setAssignedJob] = useState<LiveJob | null>(null);
     const [activeModalJob, setActiveModalJob] = useState<LiveJob | null>(null);
     const [activeModalVisible, setActiveModalVisible] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -201,12 +208,12 @@ export default function ProLiveJobsView() {
         isOnline,
     });
 
-    const { placeBid, getActiveBid, activeJobIds } = useActiveBids(10);
+    const { placeBid, removeBid, getActiveBid, activeJobIds } = useActiveBids(10);
 
-    // Use mock jobs if WS not connected OR as demo fallback
+    // Filter available live jobs to exclude assigned job
     const displayJobs: LiveJob[] = (wsJobs.length > 0)
-        ? wsJobs
-        : (isOnline && useMockData ? MOCK_JOBS : []);
+        ? wsJobs.filter((j) => !assignedJob || Number(j.id) !== Number(assignedJob.id))
+        : (isOnline && useMockData ? MOCK_JOBS.filter((j) => !assignedJob || Number(j.id) !== Number(assignedJob.id)) : []);
 
     const isJobsAvailable = isOnline && displayJobs.length > 0;
 
@@ -236,10 +243,17 @@ export default function ProLiveJobsView() {
             job = { ...job, budget: bid.price };
         }
 
+        setAssignedJob(job);
         setActiveModalJob(job);
         setActiveModalVisible(true);
         setSheetVisible(false);
-    }, [displayJobs, selectedJob]);
+        removeBid(targetId);
+    }, [displayJobs, selectedJob, removeBid]);
+
+    const handleTaskAssignedToOther = useCallback((jobId: number) => {
+        console.log(`[ProLiveJobsView] Cleaning up active bid for assigned task ${jobId}`);
+        removeBid(jobId);
+    }, [removeBid]);
 
     const handleQuickBid = (job: LiveJob, amount: number) => {
         console.log(`[ProLiveJobsView] Quick bid: job=${job.id}, amount=${amount}`);
@@ -293,6 +307,26 @@ export default function ProLiveJobsView() {
                     )}
                 </Pressable>
             </View>
+
+            {/* Persistent Active Job Banner */}
+            {assignedJob && (
+                <Pressable
+                    style={styles.activeJobBanner}
+                    onPress={() => {
+                        setActiveModalJob(assignedJob);
+                        setActiveModalVisible(true);
+                    }}
+                >
+                    <Ionicons name="checkmark-circle" size={22} color={Colors.white} />
+                    <View style={styles.activeBannerTextCol}>
+                        <Text style={styles.activeBannerTitle}>Active Job In Progress</Text>
+                        <Text style={styles.activeBannerSub} numberOfLines={1}>
+                            {assignedJob.title} — Tap to view details & contact customer
+                        </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={Colors.white} />
+                </Pressable>
+            )}
 
             {/* Sub-header: earnings + jobs count */}
             <View style={styles.subHeader}>
@@ -381,7 +415,13 @@ export default function ProLiveJobsView() {
             />
             {/* Active Bids Socket Listeners (for quick bids feedback) */}
             {activeJobIds.map((id) => (
-                <ActiveBidListener key={id} jobId={id} userId={user?.id} onAccepted={handleJobAcceptedForPro} />
+                <ActiveBidListener
+                    key={id}
+                    jobId={id}
+                    userId={user?.id}
+                    onAccepted={handleJobAcceptedForPro}
+                    onAssignedToOther={handleTaskAssignedToOther}
+                />
             ))}
 
             {/* Pro Active Task Modal */}
@@ -389,6 +429,7 @@ export default function ProLiveJobsView() {
                 job={activeModalJob}
                 isVisible={activeModalVisible}
                 onClose={() => setActiveModalVisible(false)}
+                onCompleteTask={() => setAssignedJob(null)}
             />
         </View>
     );
@@ -471,6 +512,27 @@ const styles = StyleSheet.create({
     },
     headerBtn: {
         padding: 4,
+    },
+    activeJobBanner: {
+        backgroundColor: '#059669',
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        gap: 10,
+    },
+    activeBannerTextCol: {
+        flex: 1,
+    },
+    activeBannerTitle: {
+        color: Colors.white,
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    activeBannerSub: {
+        color: 'rgba(255,255,255,0.85)',
+        fontSize: 12,
+        marginTop: 2,
     },
     headerTitleRow: {
         flexDirection: 'row',

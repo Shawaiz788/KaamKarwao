@@ -37,6 +37,7 @@ export interface UseBiddingWebSocketOptions {
     enabled?: boolean;
     token?: string;
     onBidAccepted?: (bid: BidsWSBid) => void;
+    onTaskAssignedToOther?: (taskId: number) => void;
 }
 
 export interface UseBiddingWebSocketResult {
@@ -107,6 +108,7 @@ export function useBiddingWebSocket({
     enabled = true,
     token,
     onBidAccepted,
+    onTaskAssignedToOther,
 }: UseBiddingWebSocketOptions): UseBiddingWebSocketResult {
     const [bids, setBids] = useState<BidsWSBid[]>([]);
     const [isBiddingClosed, setIsBiddingClosed] = useState(false);
@@ -131,6 +133,9 @@ export function useBiddingWebSocket({
 
     const onBidAcceptedRef = useRef(onBidAccepted);
     onBidAcceptedRef.current = onBidAccepted;
+
+    const onTaskAssignedToOtherRef = useRef(onTaskAssignedToOther);
+    onTaskAssignedToOtherRef.current = onTaskAssignedToOther;
 
     const clearRetryTimer = () => {
         if (retryTimerRef.current) {
@@ -219,6 +224,9 @@ export function useBiddingWebSocket({
 
                             if (String(accepted.user_id) === String(currentUserId) && !amICustomer) {
                                 showFeedback('Congratulations, your bid was accepted!');
+                            } else if (!amICustomer) {
+                                showFeedback('This task has been assigned to another professional.');
+                                onTaskAssignedToOtherRef.current?.(Number(accepted.task_id || taskId));
                             } else if (amICustomer) {
                                 showFeedback(`You accepted a bid of Rs. ${accepted.price}`);
 

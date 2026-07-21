@@ -43,10 +43,20 @@ export function useActiveBids(durationSeconds: number = 10) {
         [bids]
     );
 
+    const removeBid = useCallback((jobId: number) => {
+        setBids((prev) => {
+            if (!prev[jobId]) return prev;
+            const next = { ...prev };
+            delete next[jobId];
+            return next;
+        });
+    }, []);
+
     const activeJobIds = Object.keys(bids).map(Number);
 
     return {
         placeBid,
+        removeBid,
         getActiveBid,
         activeJobIds,
     };
