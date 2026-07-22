@@ -8,9 +8,11 @@ import {
   Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/auth';
 import AdminHeader from '@/components/admin/AdminHeader';
 import AdminDrawerPanel from '@/components/admin/AdminDrawerPanel';
+import UserDetailModal, { AdminUserItem } from '@/components/admin/UserDetailModal';
 
 interface UserRoleFilter {
   id: number | 'all';
@@ -24,22 +26,48 @@ const ROLE_FILTERS: UserRoleFilter[] = [
   { id: 3, label: 'Worker (3)' },
 ];
 
+const INITIAL_USERS: AdminUserItem[] = [
+  { id: 1, name: 'System Admin', phone: '+923000000000', email: 'admin@kaamkarwao.pk', usertype_id: 1, roleName: 'Admin', status: 'active', verified: true, rating: 5.0, totalTasks: 0, joinedDate: 'Jan 2026' },
+  { id: 2, name: 'Ali Khan', phone: '+923001234567', email: 'ali.khan@gmail.com', usertype_id: 2, roleName: 'Customer', status: 'active', verified: false, rating: 4.9, totalTasks: 14, joinedDate: 'Feb 2026' },
+  { id: 3, name: 'Zara Worker', phone: '+923009876543', email: 'zara.pro@gmail.com', usertype_id: 3, roleName: 'Worker', status: 'active', verified: true, rating: 4.8, totalTasks: 32, joinedDate: 'Feb 2026' },
+  { id: 4, name: 'Hassan Ahmed', phone: '+923011112222', email: 'hassan.a@yahoo.com', usertype_id: 2, roleName: 'Customer', status: 'active', verified: false, rating: 5.0, totalTasks: 5, joinedDate: 'Mar 2026' },
+  { id: 5, name: 'Usman Electrician', phone: '+923023334444', email: 'usman.tech@gmail.com', usertype_id: 3, roleName: 'Worker', status: 'suspended', verified: false, rating: 4.2, totalTasks: 19, joinedDate: 'Mar 2026' },
+];
+
 export default function AdminUsersView() {
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [users, setUsers] = useState<AdminUserItem[]>(INITIAL_USERS);
   const [selectedRole, setSelectedRole] = useState<number | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedUser, setSelectedUser] = useState<AdminUserItem | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
-  // Sample User Directory representing backend User Type IDs
-  const sampleUsers = [
-    { id: 1, name: 'System Admin', phone: '+923000000000', usertype_id: 1, roleName: 'Admin' },
-    { id: 2, name: 'Ali Khan', phone: '+923001234567', usertype_id: 2, roleName: 'Customer' },
-    { id: 3, name: 'Zara Worker', phone: '+923009876543', usertype_id: 3, roleName: 'Worker' },
-    { id: 4, name: 'Hassan Ahmed', phone: '+923011112222', usertype_id: 2, roleName: 'Customer' },
-    { id: 5, name: 'Usman Electrician', phone: '+923023334444', usertype_id: 3, roleName: 'Worker' },
-  ];
+  const handleOpenUser = (u: AdminUserItem) => {
+    setSelectedUser(u);
+    setModalOpen(true);
+  };
 
-  const filteredUsers = sampleUsers.filter((u) => {
+  const handleStatusChange = (userId: number, newStatus: 'active' | 'suspended') => {
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, status: newStatus } : u))
+    );
+    if (selectedUser && selectedUser.id === userId) {
+      setSelectedUser({ ...selectedUser, status: newStatus });
+    }
+  };
+
+  const handleVerifyToggle = (userId: number) => {
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, verified: !u.verified } : u))
+    );
+    if (selectedUser && selectedUser.id === userId) {
+      setSelectedUser({ ...selectedUser, verified: !selectedUser.verified });
+    }
+  };
+
+  const filteredUsers = users.filter((u) => {
     const matchesRole = selectedRole === 'all' || u.usertype_id === selectedRole;
     const matchesQuery =
       u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -94,11 +122,11 @@ export default function AdminUsersView() {
       {/* User Directory */}
       <ScrollView
         style={styles.content}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom + 24, 36) }]}
         showsVerticalScrollIndicator={false}
       >
         {filteredUsers.map((u) => (
-          <View key={u.id} style={styles.userCard}>
+          <Pressable key={u.id} style={styles.userCard} onPress={() => handleOpenUser(u)}>
             <View
               style={[
                 styles.userIconBox,
@@ -116,7 +144,10 @@ export default function AdminUsersView() {
             </View>
 
             <View style={styles.userInfoCol}>
-              <Text style={styles.userName}>{u.name}</Text>
+              <View style={styles.nameRow}>
+                <Text style={styles.userName}>{u.name}</Text>
+                {u.verified ? <Ionicons name="checkmark-circle" size={16} color="#0B5A3E" /> : null}
+              </View>
               <Text style={styles.userPhone}>{u.phone}</Text>
             </View>
 
@@ -125,7 +156,13 @@ export default function AdminUsersView() {
                 styles.roleBadge,
                 {
                   backgroundColor:
-                    u.usertype_id === 1 ? '#ECFDF5' : u.usertype_id === 3 ? '#FEF3C7' : '#EFF6FF',
+                    u.status === 'suspended'
+                      ? '#FEE2E2'
+                      : u.usertype_id === 1
+                      ? '#ECFDF5'
+                      : u.usertype_id === 3
+                      ? '#FEF3C7'
+                      : '#EFF6FF',
                 },
               ]}
             >
@@ -134,16 +171,30 @@ export default function AdminUsersView() {
                   styles.roleBadgeText,
                   {
                     color:
-                      u.usertype_id === 1 ? '#0B5A3E' : u.usertype_id === 3 ? '#D97706' : '#2563EB',
+                      u.status === 'suspended'
+                        ? '#EF4444'
+                        : u.usertype_id === 1
+                        ? '#0B5A3E'
+                        : u.usertype_id === 3
+                        ? '#D97706'
+                        : '#2563EB',
                   },
                 ]}
               >
-                {u.roleName} (ID {u.usertype_id})
+                {u.status === 'suspended' ? 'SUSPENDED' : `${u.roleName} (ID ${u.usertype_id})`}
               </Text>
             </View>
-          </View>
+          </Pressable>
         ))}
       </ScrollView>
+
+      <UserDetailModal
+        user={selectedUser}
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onStatusChange={handleStatusChange}
+        onVerifyToggle={handleVerifyToggle}
+      />
 
       <AdminDrawerPanel
         isOpen={drawerOpen}
@@ -196,11 +247,6 @@ const styles = StyleSheet.create({
     height: 46,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 2,
-    elevation: 1,
   },
   searchInput: {
     flex: 1,
@@ -224,11 +270,6 @@ const styles = StyleSheet.create({
     gap: 12,
     borderWidth: 1,
     borderColor: '#F3F4F6',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 2,
   },
   userIconBox: {
     width: 42,
@@ -239,6 +280,11 @@ const styles = StyleSheet.create({
   },
   userInfoCol: {
     flex: 1,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   userName: {
     fontSize: 15,

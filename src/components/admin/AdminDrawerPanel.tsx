@@ -24,7 +24,7 @@ const { width } = Dimensions.get('window');
 interface AdminDrawerPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  activeRoute: 'dashboard' | 'tasks' | 'users';
+  activeRoute: 'dashboard' | 'tasks' | 'users' | 'categories' | 'settings';
 }
 
 export default function AdminDrawerPanel({ isOpen, onClose, activeRoute }: AdminDrawerPanelProps) {
@@ -152,14 +152,13 @@ export default function AdminDrawerPanel({ isOpen, onClose, activeRoute }: Admin
               onPress={() => navigateTo('/(protected)/(admin)/dashboard')}
             >
               <Ionicons
-                name="grid"
+                name="wallet"
                 size={20}
                 color={activeRoute === 'dashboard' ? '#0B5A3E' : '#6B7280'}
               />
               <Text style={[styles.navText, activeRoute === 'dashboard' && styles.navTextActive]}>
-                Dashboard
+                Dashboard (Financials)
               </Text>
-              {activeRoute === 'dashboard' && <View style={styles.activeDot} />}
             </Pressable>
 
             <Pressable
@@ -174,7 +173,6 @@ export default function AdminDrawerPanel({ isOpen, onClose, activeRoute }: Admin
               <Text style={[styles.navText, activeRoute === 'tasks' && styles.navTextActive]}>
                 Manage Tasks
               </Text>
-              {activeRoute === 'tasks' && <View style={styles.activeDot} />}
             </Pressable>
 
             <Pressable
@@ -189,7 +187,34 @@ export default function AdminDrawerPanel({ isOpen, onClose, activeRoute }: Admin
               <Text style={[styles.navText, activeRoute === 'users' && styles.navTextActive]}>
                 Manage Users
               </Text>
-              {activeRoute === 'users' && <View style={styles.activeDot} />}
+            </Pressable>
+
+            <Pressable
+              style={[styles.navItem, activeRoute === 'categories' && styles.navItemActive]}
+              onPress={() => navigateTo('/(protected)/(admin)/categories')}
+            >
+              <Ionicons
+                name="construct"
+                size={20}
+                color={activeRoute === 'categories' ? '#0B5A3E' : '#6B7280'}
+              />
+              <Text style={[styles.navText, activeRoute === 'categories' && styles.navTextActive]}>
+                Categories
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.navItem, activeRoute === 'settings' && styles.navItemActive]}
+              onPress={() => navigateTo('/(protected)/(admin)/settings')}
+            >
+              <Ionicons
+                name="settings"
+                size={20}
+                color={activeRoute === 'settings' ? '#0B5A3E' : '#6B7280'}
+              />
+              <Text style={[styles.navText, activeRoute === 'settings' && styles.navTextActive]}>
+                Push & Settings
+              </Text>
             </Pressable>
           </View>
 
@@ -274,7 +299,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ECFDF5',
     padding: 14,
     borderRadius: 14,
-    marginVertical: 16,
+    marginVertical: 14,
     gap: 12,
     borderWidth: 1,
     borderColor: '#A7F3D0',
@@ -335,13 +360,13 @@ const styles = StyleSheet.create({
   },
   navGroup: {
     flex: 1,
-    gap: 8,
+    gap: 6,
   },
   navItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 12,
   },
@@ -349,7 +374,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ECFDF5',
   },
   navText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     color: '#4B5563',
     flex: 1,
@@ -358,14 +383,8 @@ const styles = StyleSheet.create({
     color: '#0B5A3E',
     fontWeight: '700',
   },
-  activeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#F59E0B',
-  },
   footer: {
-    paddingTop: 16,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
@@ -373,11 +392,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 14,
   },
   logoutText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: '#EF4444',
   },

@@ -1,19 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  Pressable,
-  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth';
 import AdminHeader from '@/components/admin/AdminHeader';
 import AdminStatCard from '@/components/admin/AdminStatCard';
 import AdminDrawerPanel from '@/components/admin/AdminDrawerPanel';
-import { getOpenTasksFromBackend } from '@/services/task';
 
 const TRANSACTIONS = [
   { id: 'TXN-9012', user: 'Ali Khan', amount: 1500, fee: 150, type: 'Task Payment', status: 'Settled', date: 'Today, 2:30 PM' },
@@ -22,61 +18,25 @@ const TRANSACTIONS = [
   { id: 'TXN-9009', user: 'Zara Worker', amount: 2500, fee: 250, type: 'Task Payment', status: 'Settled', date: '22 Jul 2026' },
 ];
 
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-export default function AdminDashboardView() {
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
+export default function AdminFinancialsView() {
   const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [taskCount, setTaskCount] = useState(0);
-
-  const fetchDashboardData = async () => {
-    try {
-      const openTasks = await getOpenTasksFromBackend();
-      setTaskCount(openTasks.length);
-    } catch (e) {
-      console.warn('[AdminDashboard] Error fetching stats:', e);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const handleRefresh = () => {
-    setRefreshing(true);
-    fetchDashboardData();
-  };
 
   return (
     <View style={styles.container}>
       <AdminHeader
-        title="Dashboard"
-        subtitle="Financial Revenue & Platform Overview"
+        title="Financials & Commission"
+        subtitle="Platform Volume & Earnings Ledger"
         onOpenDrawer={() => setDrawerOpen(true)}
         user={user}
       />
 
       <ScrollView
         style={styles.content}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom + 24, 36) }]}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor="#0B5A3E"
-            colors={['#0B5A3E']}
-          />
-        }
       >
-        {/* Financial KPI Stats Grid */}
+        {/* KPI Stats Grid */}
         <View style={styles.statsGrid}>
           <AdminStatCard
             label="Gross Volume"
@@ -96,25 +56,23 @@ export default function AdminDashboardView() {
 
         <View style={styles.statsGrid}>
           <AdminStatCard
-            label="Open Tasks"
-            value={loading ? '...' : taskCount}
-            iconName="list"
-            accentColor="#3B82F6"
-            subValue="Live system requests"
-          />
-          <AdminStatCard
             label="Pending Payouts"
             value="Rs. 12,400"
             iconName="wallet"
-            accentColor="#10B981"
+            accentColor="#3B82F6"
             subValue="Worker Payout Queue"
+          />
+          <AdminStatCard
+            label="Refund Requests"
+            value="0 Pending"
+            iconName="checkmark-circle"
+            accentColor="#10B981"
+            subValue="All disputes clear"
           />
         </View>
 
-        {/* Recent Financial Ledger */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Financial Transactions</Text>
-        </View>
+        {/* Ledger Title */}
+        <Text style={styles.sectionTitle}>Recent Platform Transactions</Text>
 
         {TRANSACTIONS.map((tx) => (
           <View key={tx.id} style={styles.txCard}>
@@ -133,37 +91,6 @@ export default function AdminDashboardView() {
             </View>
           </View>
         ))}
-
-        {/* Management Shortcuts */}
-        <Text style={styles.sectionTitle}>Management Modules</Text>
-
-        <Pressable
-          style={styles.actionCard}
-          onPress={() => router.push('/(protected)/(admin)/tasks')}
-        >
-          <View style={[styles.actionIconBox, { backgroundColor: '#ECFDF5' }]}>
-            <Ionicons name="documents" size={24} color="#0B5A3E" />
-          </View>
-          <View style={styles.actionTextCol}>
-            <Text style={styles.actionTitle}>Manage Tasks & Requests</Text>
-            <Text style={styles.actionSub}>View open tasks, categories, and job statuses</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-        </Pressable>
-
-        <Pressable
-          style={styles.actionCard}
-          onPress={() => router.push('/(protected)/(admin)/users')}
-        >
-          <View style={[styles.actionIconBox, { backgroundColor: '#FEF3C7' }]}>
-            <Ionicons name="people-circle" size={24} color="#D97706" />
-          </View>
-          <View style={styles.actionTextCol}>
-            <Text style={styles.actionTitle}>Manage Platform Users</Text>
-            <Text style={styles.actionSub}>View Customers (ID 2), Workers (ID 3), and Admins (ID 1)</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-        </Pressable>
       </ScrollView>
 
       <AdminDrawerPanel
@@ -191,16 +118,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 4,
-  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '800',
     color: '#111827',
+    marginTop: 8,
+    marginBottom: 4,
   },
   txCard: {
     flexDirection: 'row',
@@ -245,36 +168,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#D97706',
-    marginTop: 2,
-  },
-  actionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    gap: 14,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-  },
-  actionIconBox: {
-    width: 46,
-    height: 46,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  actionTextCol: {
-    flex: 1,
-  },
-  actionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  actionSub: {
-    fontSize: 12,
-    color: '#6B7280',
     marginTop: 2,
   },
 });
