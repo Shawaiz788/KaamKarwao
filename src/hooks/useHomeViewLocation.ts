@@ -56,8 +56,6 @@ export function useHomeViewLocation({ user, webViewRef }: UseHomeViewLocationPro
 
   const reCenterMap = async () => {
     try {
-      setLoadingLocation(true);
-
       let loc = null;
       try {
         loc = await Promise.race([
@@ -81,7 +79,7 @@ export function useHomeViewLocation({ user, webViewRef }: UseHomeViewLocationPro
 
       if (webViewRef.current) {
         const jsCode = `
-          if (map) {
+          if (typeof map !== 'undefined' && map) {
             var targetLatLng = L.latLng(${newCoords.latitude}, ${newCoords.longitude});
             var targetPoint = map.project(targetLatLng, 15);
             var size = map.getSize();
@@ -97,8 +95,6 @@ export function useHomeViewLocation({ user, webViewRef }: UseHomeViewLocationPro
       reverseGeocode(newCoords.latitude, newCoords.longitude);
     } catch (err) {
       Alert.alert('Location Error', 'Unable to fetch current location.');
-    } finally {
-      setLoadingLocation(false);
     }
   };
 
