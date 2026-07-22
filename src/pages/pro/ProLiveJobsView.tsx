@@ -13,6 +13,7 @@ import {
     ToastAndroid,
     Platform,
     Image,
+    Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -303,16 +304,22 @@ export default function ProLiveJobsView() {
             const completedStatusId = await getCompletedStatusId();
             await updateTaskStatusOnBackend(job.id, completedStatusId);
             console.log(`[ProLiveJobsView] Backend task ${job.id} updated to Completed status (${completedStatusId}).`);
-        } catch (err) {
+
+            // Only clear assigned job and show review modal if API call succeeded
+            setAssignedJob(null);
+            setActiveModalVisible(false);
+
+            // Open review modal for pro to rate customer
+            setCompletedJobForReview(job);
+            setReviewModalVisible(true);
+        } catch (err: any) {
             console.error('[ProLiveJobsView] Failed to update backend task status to Completed:', err);
+            Alert.alert(
+                'Connection Error',
+                'Failed to mark task as completed due to a connection error. Please check your internet connection and try again.'
+            );
+            throw err;
         }
-
-        setAssignedJob(null);
-        setActiveModalVisible(false);
-
-        // Open review modal for pro to rate customer
-        setCompletedJobForReview(job);
-        setReviewModalVisible(true);
     }, []);
 
     const handleProSubmitReview = useCallback(async (rating: number, body: string) => {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
     Modal,
     View,
@@ -11,6 +11,7 @@ import {
     Alert,
     ToastAndroid,
     Platform,
+    ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,7 +23,7 @@ interface ProActiveTaskModalProps {
     isVisible: boolean;
     isCancelled?: boolean;
     onClose: () => void;
-    onCompleteTask?: (job: LiveJob) => void;
+    onCompleteTask?: (job: LiveJob) => Promise<void> | void;
 }
 
 function showToast(message: string) {
@@ -41,6 +42,7 @@ export default function ProActiveTaskModal({
     onCompleteTask,
 }: ProActiveTaskModalProps) {
     const insets = useSafeAreaInsets();
+    const [isCompleting, setIsCompleting] = useState(false);
 
     if (!job || !isVisible) return null;
 
@@ -71,12 +73,21 @@ export default function ProActiveTaskModal({
         });
     };
 
-    const handleComplete = () => {
-        showToast('Task marked as completed!');
-        if (onCompleteTask) {
-            onCompleteTask(job);
+    const handleComplete = async () => {
+        if (!onCompleteTask) {
+            onClose();
+            return;
         }
-        onClose();
+        setIsCompleting(true);
+        try {
+            await onCompleteTask(job);
+            showToast('Task marked as completed!');
+            onClose();
+        } catch (err) {
+            console.warn('[ProActiveTaskModal] Complete task action failed:', err);
+        } finally {
+            setIsCompleting(false);
+        }
     };
 
     return (
@@ -204,9 +215,19 @@ export default function ProActiveTaskModal({
                             <Text style={styles.completeBtnText}>Return to Live Jobs</Text>
                         </Pressable>
                     ) : (
-                        <Pressable style={styles.completeBtn} onPress={handleComplete}>
-                            <Ionicons name="checkmark-done" size={22} color={Colors.white} />
-                            <Text style={styles.completeBtnText}>Mark Job as Completed</Text>
+                        <Pressable
+                            style={[styles.completeBtn, isCompleting && { opacity: 0.7 }]}
+                            onPress={handleComplete}
+                            disabled={isCompleting}
+                        >
+                            {isCompleting ? (
+                                <ActivityIndicator color={Colors.white} size="small" />
+                            ) : (
+                                <>
+                                    <Ionicons name="checkmark-done" size={22} color={Colors.white} />
+                                    <Text style={styles.completeBtnText}>Mark Job as Completed</Text>
+                                </>
+                            )}
                         </Pressable>
                     )}
                 </ScrollView>

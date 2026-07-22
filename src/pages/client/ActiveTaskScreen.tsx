@@ -366,11 +366,6 @@ export default function ActiveTaskScreen({ onBack }: ActiveTaskScreenProps) {
                 </Pressable>
               </View>
             </View>
-
-            <Pressable style={styles.completeBtn} onPress={completeTask}>
-              <Ionicons name="checkmark" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-              <Text style={styles.completeBtnText}>Mark as Completed</Text>
-            </Pressable>
           </View>
         )}
       </ScrollView>
