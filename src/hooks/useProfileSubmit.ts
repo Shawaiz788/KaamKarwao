@@ -4,7 +4,7 @@ import { useAuth } from '@/context/auth';
 import { createUser, verifyUserOnBackend, loginUser } from '@/services/user';
 import { useMutation } from '@tanstack/react-query';
 import { getOrCreateLocationChain } from '@/services/location';
-import { USER_TYPE_PRO } from '@/constants/userTypes';
+import { USER_TYPE_CLIENT, USER_TYPE_PRO } from '@/constants/userTypes';
 
 type Role = 'client' | 'provider';
 
@@ -61,7 +61,7 @@ export function useProfileSubmit({
     const nameParts = fullName.trim().split(/\s+/);
     const first_name = nameParts[0] || '';
     const last_name = nameParts.slice(1).join(' ') || '';
-    const usertype_id = role === 'provider' ? 1 : 2;
+    const usertype_id = role === 'provider' ? USER_TYPE_PRO : USER_TYPE_CLIENT;
 
     if (!selectedCity) throw new Error('Please select a city.');
     if (!area) throw new Error('Please select your Area / Sector.');

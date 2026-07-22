@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { AppUser } from '@/types';
-import { USER_TYPE_PRO } from '@/constants/userTypes';
+import { USER_TYPE_ADMIN, USER_TYPE_PRO } from '@/constants/userTypes';
 
 /**
  * Hook that returns a `routeAfterAuth` function.
@@ -9,8 +9,9 @@ import { USER_TYPE_PRO } from '@/constants/userTypes';
  *
  * Routing logic:
  *   - No displayName → profile-setup (new user, incomplete profile)
- *   - usertype_id === USER_TYPE_PRO (1) → /(protected)/(pro)/dashboard
- *   - otherwise (client) → /(protected)/(client)/home
+ *   - usertype_id === USER_TYPE_ADMIN (1) → /(protected)/(admin)/dashboard
+ *   - usertype_id === USER_TYPE_PRO (3) → /(protected)/(pro)/dashboard
+ *   - usertype_id === USER_TYPE_CLIENT (2) → /(protected)/(client)/home
  */
 export function useRouteByUserType() {
     const router = useRouter();
@@ -22,13 +23,19 @@ export function useRouteByUserType() {
             return;
         }
 
-        // Professional
+        // Admin (1)
+        if (user.usertype_id === USER_TYPE_ADMIN) {
+            router.replace('/(protected)/(admin)/dashboard');
+            return;
+        }
+
+        // Professional / Worker (3)
         if (user.usertype_id === USER_TYPE_PRO) {
             router.replace('/(protected)/(pro)/dashboard');
             return;
         }
 
-        // Client (default)
+        // Client / Customer (2 - default)
         router.replace('/(protected)/(client)/home');
     };
 

@@ -17,7 +17,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { loginUser } from '@/services/user';
 import { useAuth } from '@/context/auth';
-import { USER_TYPE_PRO } from '@/constants/userTypes';
+import { USER_TYPE_ADMIN, USER_TYPE_PRO } from '@/constants/userTypes';
 import AuthHeader from '@/components/auth/AuthHeader';
 import PhoneInputField from '@/components/auth/PhoneInputField';
 import PasswordInputField from '@/components/auth/PasswordInputField';
@@ -92,7 +92,9 @@ export default function SignInScreen() {
 
       await login(appUser, data.password);
 
-      if (appUser.usertype_id === USER_TYPE_PRO) {
+      if (appUser.usertype_id === USER_TYPE_ADMIN) {
+        router.replace('/(protected)/(admin)/dashboard');
+      } else if (appUser.usertype_id === USER_TYPE_PRO) {
         router.replace('/(protected)/(pro)/dashboard');
       } else {
         router.replace('/(protected)/(client)/home');

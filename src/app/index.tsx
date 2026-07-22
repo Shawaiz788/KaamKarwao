@@ -14,7 +14,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { USER_TYPE_PRO } from '../constants/userTypes';
+import { USER_TYPE_ADMIN, USER_TYPE_PRO } from '../constants/userTypes';
 const { width } = Dimensions.get('window');
 
 export default function WelcomeScreen() {
@@ -27,6 +27,8 @@ export default function WelcomeScreen() {
       const isProfileIncomplete = !user.displayName;
       if (isProfileIncomplete) {
         router.replace('/profile-setup');
+      } else if (user.usertype_id === USER_TYPE_ADMIN) {
+        router.replace('/(protected)/(admin)/dashboard');
       } else if (user.usertype_id === USER_TYPE_PRO) {
         router.replace('/(protected)/(pro)/dashboard');
       } else {
@@ -40,6 +42,8 @@ export default function WelcomeScreen() {
       const isProfileIncomplete = !user.displayName;
       if (isProfileIncomplete) {
         router.replace('/profile-setup');
+      } else if (user.usertype_id === USER_TYPE_ADMIN) {
+        router.replace('/(protected)/(admin)/dashboard');
       } else if (user.usertype_id === USER_TYPE_PRO) {
         router.replace('/(protected)/(pro)/dashboard');
       } else {

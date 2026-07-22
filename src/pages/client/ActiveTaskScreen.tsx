@@ -173,6 +173,13 @@ export default function ActiveTaskScreen({ onBack }: ActiveTaskScreenProps) {
     }
   }, [isCreatingTask, activeTask?.status]);
 
+  // Auto navigate home if activeTask becomes null
+  useEffect(() => {
+    if (!activeTask && !isCreatingTask) {
+      onBack();
+    }
+  }, [activeTask, isCreatingTask]);
+
   if (isCreatingTask) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
@@ -191,12 +198,6 @@ export default function ActiveTaskScreen({ onBack }: ActiveTaskScreenProps) {
       </SafeAreaView>
     );
   }
-
-  useEffect(() => {
-    if (!activeTask && !isCreatingTask) {
-      onBack();
-    }
-  }, [activeTask, isCreatingTask]);
 
   if (!activeTask) {
     return null;
