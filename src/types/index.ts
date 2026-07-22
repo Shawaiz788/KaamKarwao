@@ -189,3 +189,25 @@ export interface Pro {
   policeVerified: boolean;
   avatar: string;
 }
+
+// ─── Review Types ─────────────────────────────────────────────────────────────
+export interface ReviewInput {
+  user_id: number;
+  task_id: number;
+  given_by: number;
+  body: string;
+  rating: number;
+  attachment_id?: number | null;
+}
+
+export interface ReviewResponse {
+  id: number;
+  user_id: number;
+  task_id: number;
+  given_by: number;
+  body: string;
+  rating: number;
+  attachment_id?: number | null;
+  created_at?: string;
+}
+

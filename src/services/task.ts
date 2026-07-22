@@ -377,4 +377,36 @@ export const getOpenTasksFromBackend = async (): Promise<BackendTask[]> => {
   }
 };
 
+export const getTaskByIdFromBackend = async (taskId: number): Promise<BackendTask | null> => {
+  const url = `${API_URL}/app/task/${taskId}/`;
+  console.log(`[getTaskByIdFromBackend] Fetching task ${taskId} from URL: ${url}`);
+  const response = await fetchWithAuth(url);
+  const responseText = await response.text();
+  console.log(`[getTaskByIdFromBackend] Status for task ${taskId}: ${response.status}`);
+
+  if (!response.ok) {
+    if (response.status === 404) return null;
+    throw new Error(`Failed to fetch task ${taskId}. Status: ${response.status}`);
+  }
+
+  try {
+    return JSON.parse(responseText);
+  } catch (e) {
+    console.error(`[getTaskByIdFromBackend] JSON parse error for task ${taskId}:`, e);
+    return null;
+  }
+};
+
+export const getCompletedStatusId = async (): Promise<number> => {
+  try {
+    const statuses = await getStatusesFromBackend();
+    const completed = statuses.find((s) => s.name.toLowerCase() === 'completed');
+    if (completed) return completed.id;
+  } catch (e) {
+    console.warn('[getCompletedStatusId] Failed to fetch backend statuses, fallback to 4:', e);
+  }
+  return 4;
+};
+
+
 

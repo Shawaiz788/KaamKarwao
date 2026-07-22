@@ -22,6 +22,9 @@ import { usePostJob, Bid } from '@/context/post-job';
 import { useAuth } from '@/context/auth';
 import { useBiddingWebSocket } from '@/hooks/useBiddingWebSocket';
 import { useRouter } from 'expo-router';
+import { getTaskByIdFromBackend } from '@/services/task';
+import { createReview } from '@/services/review';
+import ReviewModal from '@/components/ReviewModal';
 
 const { width } = Dimensions.get('window');
 
@@ -78,7 +81,54 @@ export default function ActiveTaskScreen({ onBack }: ActiveTaskScreenProps) {
 
   const [chatVisible, setChatVisible] = useState(false);
   const [chatInput, setChatInput] = useState('');
+  const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const [completedTaskInfo, setCompletedTaskInfo] = useState<{ id: number; proName: string; proId?: number; title: string } | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  // Periodic API status polling every 35s on active task
+  useEffect(() => {
+    if (!taskId || !activeTask || activeTask.status === 'completed' || activeTask.status === 'cancelled') return;
+
+    console.log(`[ActiveTaskScreen] Starting periodic task completion check polling (35s) for Task ID: ${taskId}...`);
+
+    const checkTaskStatus = async () => {
+      try {
+        const taskData = await getTaskByIdFromBackend(taskId);
+        if (taskData && (taskData.status_id === 4 || (taskData as any).status === 'completed')) {
+          console.log(`[ActiveTaskScreen] Detected task ${taskId} completed on backend!`);
+
+          const proName = activeTask.acceptedBid?.name || 'Service Provider';
+          const proId = (activeTask.acceptedBid as any)?.user_id || 1;
+          const taskTitle = activeTask.category || 'Service Request';
+
+          setCompletedTaskInfo({ id: taskId, proName, proId, title: taskTitle });
+          setReviewModalVisible(true);
+        }
+      } catch (err) {
+        console.warn('[ActiveTaskScreen] Error polling task status:', err);
+      }
+    };
+
+    const initialTimer = setTimeout(checkTaskStatus, 10000);
+    const interval = setInterval(checkTaskStatus, 35000);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
+  }, [taskId, activeTask?.status]);
+
+  const handleCustomerSubmitReview = async (rating: number, body: string) => {
+    if (!completedTaskInfo || !user?.id) return;
+    const targetUserId = completedTaskInfo.proId || 1;
+    await createReview({
+      user_id: targetUserId,
+      task_id: completedTaskInfo.id,
+      given_by: user.id,
+      rating,
+      body,
+    });
+  };
 
   // Pulse animation for searching state
   useEffect(() => {
@@ -421,6 +471,20 @@ export default function ActiveTaskScreen({ onBack }: ActiveTaskScreenProps) {
           </KeyboardAvoidingView>
         </Modal>
       )}
+
+      {/* Customer Review Modal */}
+      <ReviewModal
+        isVisible={reviewModalVisible}
+        onClose={() => {
+          setReviewModalVisible(false);
+          setCompletedTaskInfo(null);
+          completeTask();
+        }}
+        onSubmit={handleCustomerSubmitReview}
+        targetName={completedTaskInfo?.proName || 'Service Provider'}
+        role="customer"
+        taskTitle={completedTaskInfo?.title}
+      />
       </View>
     </SafeAreaView>
   );

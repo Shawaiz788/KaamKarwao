@@ -25,7 +25,10 @@ import JobCard from '@/components/pro/JobCard';
 import JobDetailBottomSheet from '@/components/pro/JobDetailBottomSheet';
 import ProDrawerPanel from '@/components/pro/ProDrawerPanel';
 import ProActiveTaskModal from '@/components/pro/ProActiveTaskModal';
+import ReviewModal from '@/components/ReviewModal';
 import { useActiveBids } from '@/hooks/useActiveBids';
+import { updateTaskStatusOnBackend, getCompletedStatusId } from '@/services/task';
+import { createReview } from '@/services/review';
 
 function ActiveBidListener({
     jobId,
@@ -203,6 +206,8 @@ export default function ProLiveJobsView() {
     const [isCancelledJob, setIsCancelledJob] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [useMockData, setUseMockData] = useState(false); // Fallback while WS not configured
+    const [reviewModalVisible, setReviewModalVisible] = useState(false);
+    const [completedJobForReview, setCompletedJobForReview] = useState<LiveJob | null>(null);
 
     const { jobs: wsJobs, wsStatus, hasNoJobs, refresh: wsRefresh } = useProWebSocket({
         userId: user?.id,
@@ -291,6 +296,36 @@ export default function ProLiveJobsView() {
         console.log(`[ProLiveJobsView] Cleaning up active bid for assigned task ${jobId}`);
         removeBid(jobId);
     }, [removeBid]);
+
+    const handleCompleteTask = useCallback(async (job: LiveJob) => {
+        console.log(`[ProLiveJobsView] Marking task ${job.id} as completed...`);
+        try {
+            const completedStatusId = await getCompletedStatusId();
+            await updateTaskStatusOnBackend(job.id, completedStatusId);
+            console.log(`[ProLiveJobsView] Backend task ${job.id} updated to Completed status (${completedStatusId}).`);
+        } catch (err) {
+            console.error('[ProLiveJobsView] Failed to update backend task status to Completed:', err);
+        }
+
+        setAssignedJob(null);
+        setActiveModalVisible(false);
+
+        // Open review modal for pro to rate customer
+        setCompletedJobForReview(job);
+        setReviewModalVisible(true);
+    }, []);
+
+    const handleProSubmitReview = useCallback(async (rating: number, body: string) => {
+        if (!completedJobForReview || !user?.id) return;
+        const targetUserId = completedJobForReview.customer_id || 1;
+        await createReview({
+            user_id: targetUserId,
+            task_id: completedJobForReview.id,
+            given_by: user.id,
+            rating,
+            body,
+        });
+    }, [completedJobForReview, user?.id]);
 
     const handleQuickBid = (job: LiveJob, amount: number) => {
         console.log(`[ProLiveJobsView] Quick bid: job=${job.id}, amount=${amount}`);
@@ -471,7 +506,20 @@ export default function ProLiveJobsView() {
                     setActiveModalVisible(false);
                     setIsCancelledJob(false);
                 }}
-                onCompleteTask={() => setAssignedJob(null)}
+                onCompleteTask={handleCompleteTask}
+            />
+
+            {/* Pro Review Modal */}
+            <ReviewModal
+                isVisible={reviewModalVisible}
+                onClose={() => {
+                    setReviewModalVisible(false);
+                    setCompletedJobForReview(null);
+                }}
+                onSubmit={handleProSubmitReview}
+                targetName={completedJobForReview?.customer_name || 'Customer'}
+                role="pro"
+                taskTitle={completedJobForReview?.title}
             />
         </View>
     );
