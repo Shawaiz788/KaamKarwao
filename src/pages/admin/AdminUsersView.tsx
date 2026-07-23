@@ -4,22 +4,19 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth';
 import AdminHeader from '@/components/admin/AdminHeader';
 import AdminDrawerPanel from '@/components/admin/AdminDrawerPanel';
 import UserDetailModal, { AdminUserItem } from '@/components/admin/UserDetailModal';
+import SearchBar from '@/components/admin/common/SearchBar';
+import EmptyState from '@/components/admin/common/EmptyState';
 
-interface UserRoleFilter {
-  id: number | 'all';
-  label: string;
-}
-
-const ROLE_FILTERS: UserRoleFilter[] = [
+const ROLE_FILTERS = [
   { id: 'all', label: 'All Roles' },
   { id: 1, label: 'Admin (1)' },
   { id: 2, label: 'Customer (2)' },
@@ -36,6 +33,7 @@ const INITIAL_USERS: AdminUserItem[] = [
 
 export default function AdminUsersView() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [users, setUsers] = useState<AdminUserItem[]>(INITIAL_USERS);
@@ -45,8 +43,13 @@ export default function AdminUsersView() {
   const [modalOpen, setModalOpen] = useState(false);
 
   const handleOpenUser = (u: AdminUserItem) => {
-    setSelectedUser(u);
-    setModalOpen(true);
+    if (u.usertype_id === 3) {
+      // Direct navigation to Professional Details screen
+      router.push({ pathname: '/(protected)/(admin)/pro-detail', params: { id: u.id } });
+    } else {
+      setSelectedUser(u);
+      setModalOpen(true);
+    }
   };
 
   const handleStatusChange = (userId: number, newStatus: 'active' | 'suspended') => {
@@ -78,7 +81,7 @@ export default function AdminUsersView() {
   return (
     <View style={styles.container}>
       <AdminHeader
-        title="Manage Users"
+        title="User Management"
         subtitle={`Registered Platform Users (${filteredUsers.length})`}
         onOpenDrawer={() => setDrawerOpen(true)}
         user={user}
@@ -92,7 +95,7 @@ export default function AdminUsersView() {
             <Pressable
               key={String(f.id)}
               style={[styles.filterChip, active && styles.filterChipActive]}
-              onPress={() => setSelectedRole(f.id)}
+              onPress={() => setSelectedRole(f.id as any)}
             >
               <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
                 {f.label}
@@ -102,21 +105,13 @@ export default function AdminUsersView() {
         })}
       </View>
 
-      {/* Search Input */}
-      <View style={styles.searchBarContainer}>
-        <Ionicons name="search" size={18} color="#6B7280" />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search by name or phone..."
-          placeholderTextColor="#9CA3AF"
+      {/* Reusable Search Component */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+        <SearchBar
           value={searchQuery}
           onChangeText={setSearchQuery}
+          placeholder="Search user by name or phone..."
         />
-        {searchQuery ? (
-          <Pressable onPress={() => setSearchQuery('')}>
-            <Ionicons name="close-circle" size={18} color="#9CA3AF" />
-          </Pressable>
-        ) : null}
       </View>
 
       {/* User Directory */}
@@ -125,67 +120,71 @@ export default function AdminUsersView() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom + 24, 36) }]}
         showsVerticalScrollIndicator={false}
       >
-        {filteredUsers.map((u) => (
-          <Pressable key={u.id} style={styles.userCard} onPress={() => handleOpenUser(u)}>
-            <View
-              style={[
-                styles.userIconBox,
-                {
-                  backgroundColor:
-                    u.usertype_id === 1 ? '#ECFDF5' : u.usertype_id === 3 ? '#FEF3C7' : '#EFF6FF',
-                },
-              ]}
-            >
-              <Ionicons
-                name={u.usertype_id === 1 ? 'shield-checkmark' : u.usertype_id === 3 ? 'construct' : 'person'}
-                size={22}
-                color={u.usertype_id === 1 ? '#0B5A3E' : u.usertype_id === 3 ? '#D97706' : '#2563EB'}
-              />
-            </View>
-
-            <View style={styles.userInfoCol}>
-              <View style={styles.nameRow}>
-                <Text style={styles.userName}>{u.name}</Text>
-                {u.verified ? <Ionicons name="checkmark-circle" size={16} color="#0B5A3E" /> : null}
-              </View>
-              <Text style={styles.userPhone}>{u.phone}</Text>
-            </View>
-
-            <View
-              style={[
-                styles.roleBadge,
-                {
-                  backgroundColor:
-                    u.status === 'suspended'
-                      ? '#FEE2E2'
-                      : u.usertype_id === 1
-                      ? '#ECFDF5'
-                      : u.usertype_id === 3
-                      ? '#FEF3C7'
-                      : '#EFF6FF',
-                },
-              ]}
-            >
-              <Text
+        {filteredUsers.length === 0 ? (
+          <EmptyState title="No users found" subtitle="Try adjusting your search query or role filter." />
+        ) : (
+          filteredUsers.map((u) => (
+            <Pressable key={u.id} style={styles.userCard} onPress={() => handleOpenUser(u)}>
+              <View
                 style={[
-                  styles.roleBadgeText,
+                  styles.userIconBox,
                   {
-                    color:
-                      u.status === 'suspended'
-                        ? '#EF4444'
-                        : u.usertype_id === 1
-                        ? '#0B5A3E'
-                        : u.usertype_id === 3
-                        ? '#D97706'
-                        : '#2563EB',
+                    backgroundColor:
+                      u.usertype_id === 1 ? '#ECFDF5' : u.usertype_id === 3 ? '#FEF3C7' : '#EFF6FF',
                   },
                 ]}
               >
-                {u.status === 'suspended' ? 'SUSPENDED' : `${u.roleName} (ID ${u.usertype_id})`}
-              </Text>
-            </View>
-          </Pressable>
-        ))}
+                <Ionicons
+                  name={u.usertype_id === 1 ? 'shield-checkmark' : u.usertype_id === 3 ? 'construct' : 'person'}
+                  size={22}
+                  color={u.usertype_id === 1 ? '#0B5A3E' : u.usertype_id === 3 ? '#D97706' : '#2563EB'}
+                />
+              </View>
+
+              <View style={styles.userInfoCol}>
+                <View style={styles.nameRow}>
+                  <Text style={styles.userName}>{u.name}</Text>
+                  {u.verified ? <Ionicons name="checkmark-circle" size={16} color="#0B5A3E" /> : null}
+                </View>
+                <Text style={styles.userPhone}>{u.phone}</Text>
+              </View>
+
+              <View
+                style={[
+                  styles.roleBadge,
+                  {
+                    backgroundColor:
+                      u.status === 'suspended'
+                        ? '#FEE2E2'
+                        : u.usertype_id === 1
+                        ? '#ECFDF5'
+                        : u.usertype_id === 3
+                        ? '#FEF3C7'
+                        : '#EFF6FF',
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.roleBadgeText,
+                    {
+                      color:
+                        u.status === 'suspended'
+                          ? '#EF4444'
+                          : u.usertype_id === 1
+                          ? '#0B5A3E'
+                          : u.usertype_id === 3
+                          ? '#D97706'
+                          : '#2563EB',
+                    },
+                  ]}
+                >
+                  {u.status === 'suspended' ? 'SUSPENDED' : `${u.roleName} (ID ${u.usertype_id})`}
+                </Text>
+              </View>
+            </Pressable>
+          ))
+        )}
       </ScrollView>
 
       <UserDetailModal
@@ -213,7 +212,7 @@ const styles = StyleSheet.create({
   filterRow: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingTop: 14,
+    paddingTop: 12,
     gap: 8,
   },
   filterChip: {
@@ -236,25 +235,9 @@ const styles = StyleSheet.create({
   filterChipTextActive: {
     color: '#FFFFFF',
   },
-  searchBarContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    margin: 16,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    gap: 10,
-    height: 46,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  searchInput: {
-    flex: 1,
-    color: '#111827',
-    fontSize: 14,
-  },
   content: {
     flex: 1,
+    marginTop: 12,
   },
   scrollContent: {
     paddingHorizontal: 16,

@@ -11,6 +11,7 @@ import {
   Alert,
   ToastAndroid,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -21,10 +22,23 @@ import { updateProfilePic } from '@/services/user';
 
 const { width } = Dimensions.get('window');
 
+export type AdminRouteType =
+  | 'dashboard'
+  | 'users'
+  | 'pro-detail'
+  | 'tasks'
+  | 'bids'
+  | 'reviews'
+  | 'earnings'
+  | 'attachments'
+  | 'categories'
+  | 'masterdata'
+  | 'settings';
+
 interface AdminDrawerPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  activeRoute: 'dashboard' | 'tasks' | 'users' | 'categories' | 'settings';
+  activeRoute: AdminRouteType;
 }
 
 export default function AdminDrawerPanel({ isOpen, onClose, activeRoute }: AdminDrawerPanelProps) {
@@ -89,10 +103,22 @@ export default function AdminDrawerPanel({ isOpen, onClose, activeRoute }: Admin
     }
   };
 
+  const navItems: Array<{ id: AdminRouteType; label: string; icon: keyof typeof Ionicons.glyphMap; path: string }> = [
+    { id: 'dashboard', label: 'Dashboard', icon: 'grid', path: '/(protected)/(admin)/dashboard' },
+    { id: 'users', label: 'User Directory', icon: 'people', path: '/(protected)/(admin)/users' },
+    { id: 'tasks', label: 'Task Management', icon: 'list', path: '/(protected)/(admin)/tasks' },
+    { id: 'bids', label: 'Task Bidding', icon: 'cash', path: '/(protected)/(admin)/bids' },
+    { id: 'reviews', label: 'Reviews & Ratings', icon: 'star', path: '/(protected)/(admin)/reviews' },
+    { id: 'earnings', label: 'Worker Earnings', icon: 'wallet', path: '/(protected)/(admin)/earnings' },
+    { id: 'attachments', label: 'Attachments', icon: 'attach', path: '/(protected)/(admin)/attachments' },
+    { id: 'categories', label: 'Categories & Services', icon: 'construct', path: '/(protected)/(admin)/categories' },
+    { id: 'masterdata', label: 'Locations & Master Data', icon: 'layers', path: '/(protected)/(admin)/masterdata' },
+    { id: 'settings', label: 'Push & Settings', icon: 'settings', path: '/(protected)/(admin)/settings' },
+  ];
+
   return (
     <Modal visible={isOpen} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        {/* Left Drawer Container */}
         <View
           style={[
             styles.drawer,
@@ -110,7 +136,7 @@ export default function AdminDrawerPanel({ isOpen, onClose, activeRoute }: Admin
               </View>
               <View>
                 <Text style={styles.brandTitle}>KaamKarwao</Text>
-                <Text style={styles.brandSub}>Admin Portal</Text>
+                <Text style={styles.brandSub}>Admin Control Panel</Text>
               </View>
             </View>
             <Pressable onPress={onClose} style={styles.closeBtn}>
@@ -145,78 +171,30 @@ export default function AdminDrawerPanel({ isOpen, onClose, activeRoute }: Admin
             </View>
           </View>
 
-          {/* Navigation Items */}
-          <View style={styles.navGroup}>
-            <Pressable
-              style={[styles.navItem, activeRoute === 'dashboard' && styles.navItemActive]}
-              onPress={() => navigateTo('/(protected)/(admin)/dashboard')}
-            >
-              <Ionicons
-                name="wallet"
-                size={20}
-                color={activeRoute === 'dashboard' ? '#0B5A3E' : '#6B7280'}
-              />
-              <Text style={[styles.navText, activeRoute === 'dashboard' && styles.navTextActive]}>
-                Dashboard (Financials)
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={[styles.navItem, activeRoute === 'tasks' && styles.navItemActive]}
-              onPress={() => navigateTo('/(protected)/(admin)/tasks')}
-            >
-              <Ionicons
-                name="list"
-                size={20}
-                color={activeRoute === 'tasks' ? '#0B5A3E' : '#6B7280'}
-              />
-              <Text style={[styles.navText, activeRoute === 'tasks' && styles.navTextActive]}>
-                Manage Tasks
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={[styles.navItem, activeRoute === 'users' && styles.navItemActive]}
-              onPress={() => navigateTo('/(protected)/(admin)/users')}
-            >
-              <Ionicons
-                name="people"
-                size={20}
-                color={activeRoute === 'users' ? '#0B5A3E' : '#6B7280'}
-              />
-              <Text style={[styles.navText, activeRoute === 'users' && styles.navTextActive]}>
-                Manage Users
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={[styles.navItem, activeRoute === 'categories' && styles.navItemActive]}
-              onPress={() => navigateTo('/(protected)/(admin)/categories')}
-            >
-              <Ionicons
-                name="construct"
-                size={20}
-                color={activeRoute === 'categories' ? '#0B5A3E' : '#6B7280'}
-              />
-              <Text style={[styles.navText, activeRoute === 'categories' && styles.navTextActive]}>
-                Categories
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={[styles.navItem, activeRoute === 'settings' && styles.navItemActive]}
-              onPress={() => navigateTo('/(protected)/(admin)/settings')}
-            >
-              <Ionicons
-                name="settings"
-                size={20}
-                color={activeRoute === 'settings' ? '#0B5A3E' : '#6B7280'}
-              />
-              <Text style={[styles.navText, activeRoute === 'settings' && styles.navTextActive]}>
-                Push & Settings
-              </Text>
-            </Pressable>
-          </View>
+          {/* Navigation Scroll */}
+          <ScrollView style={styles.navScroll} showsVerticalScrollIndicator={false}>
+            <View style={styles.navGroup}>
+              {navItems.map((item) => {
+                const active = activeRoute === item.id;
+                return (
+                  <Pressable
+                    key={item.id}
+                    style={[styles.navItem, active && styles.navItemActive]}
+                    onPress={() => navigateTo(item.path)}
+                  >
+                    <Ionicons
+                      name={item.icon}
+                      size={20}
+                      color={active ? '#0B5A3E' : '#6B7280'}
+                    />
+                    <Text style={[styles.navText, active && styles.navTextActive]}>
+                      {item.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </ScrollView>
 
           {/* Footer Sign Out */}
           <View style={styles.footer}>
@@ -244,7 +222,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   drawer: {
-    width: width * 0.78,
+    width: width * 0.8,
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
     justifyContent: 'space-between',
@@ -297,9 +275,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ECFDF5',
-    padding: 14,
+    padding: 12,
     borderRadius: 14,
-    marginVertical: 14,
+    marginVertical: 12,
     gap: 12,
     borderWidth: 1,
     borderColor: '#A7F3D0',
@@ -341,7 +319,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   userName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: '#111827',
   },
@@ -358,23 +336,26 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#F59E0B',
   },
-  navGroup: {
+  navScroll: {
     flex: 1,
-    gap: 6,
+  },
+  navGroup: {
+    gap: 4,
+    paddingVertical: 6,
   },
   navItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
     borderRadius: 12,
   },
   navItemActive: {
     backgroundColor: '#ECFDF5',
   },
   navText: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '600',
     color: '#4B5563',
     flex: 1,
@@ -384,7 +365,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   footer: {
-    paddingTop: 12,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
@@ -393,7 +374,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
   },
   logoutText: {
     fontSize: 14,

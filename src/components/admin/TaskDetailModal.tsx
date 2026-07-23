@@ -11,13 +11,14 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { BackendTask } from '@/types';
 
-export interface AdminTaskItem {
+export interface AdminTaskItem extends Partial<BackendTask> {
   id: number;
   subject?: string;
   body?: string;
   price: number;
-  category_id: number;
+  category_id?: number;
   category_name?: string;
   status_id?: number;
   statusName?: string;
@@ -27,9 +28,10 @@ export interface AdminTaskItem {
 }
 
 interface TaskDetailModalProps {
-  task: AdminTaskItem | null;
+  task: any | null;
   isOpen: boolean;
   onClose: () => void;
+  onStatusChange?: (taskId: number, statusId: number) => void;
   onCancelTask?: (taskId: number) => void;
 }
 
@@ -37,10 +39,12 @@ export default function TaskDetailModal({
   task,
   isOpen,
   onClose,
+  onStatusChange,
   onCancelTask,
 }: TaskDetailModalProps) {
   if (!isOpen || !task) return null;
 
+  const taskId = task.id;
   const statusName = task.statusName || (task.status_id === 4 ? 'Completed' : task.status_id === 5 ? 'Cancelled' : 'Active / Searching');
   const statusColor = task.status_id === 4 ? '#0B5A3E' : task.status_id === 5 ? '#EF4444' : '#D97706';
   const statusBg = task.status_id === 4 ? '#ECFDF5' : task.status_id === 5 ? '#FEE2E2' : '#FEF3C7';
@@ -48,16 +52,17 @@ export default function TaskDetailModal({
   const handleForceCancel = () => {
     Alert.alert(
       'Cancel Task',
-      `Are you sure you want to force cancel Task #${task.id}?`,
+      `Are you sure you want to force cancel Task #${taskId}?`,
       [
         { text: 'No', style: 'cancel' },
         {
           text: 'Force Cancel',
           style: 'destructive',
           onPress: () => {
-            if (onCancelTask) onCancelTask(task.id);
+            if (onCancelTask) onCancelTask(taskId);
+            if (onStatusChange) onStatusChange(taskId, 5);
             if (Platform.OS === 'android') {
-              ToastAndroid.show(`Task #${task.id} has been cancelled by Admin`, ToastAndroid.SHORT);
+              ToastAndroid.show(`Task #${taskId} has been cancelled by Admin`, ToastAndroid.SHORT);
             }
             onClose();
           },
@@ -73,7 +78,7 @@ export default function TaskDetailModal({
 
         <View style={styles.sheetContainer}>
           <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>Task Details #{task.id}</Text>
+            <Text style={styles.sheetTitle}>Task Details #{taskId}</Text>
             <Pressable onPress={onClose} style={styles.closeBtn}>
               <Ionicons name="close" size={22} color="#6B7280" />
             </Pressable>
@@ -83,7 +88,7 @@ export default function TaskDetailModal({
             {/* Task Card Header */}
             <View style={styles.headerCard}>
               <View style={styles.topRow}>
-                <Text style={styles.taskTitle}>{task.subject || `Task #${task.id}`}</Text>
+                <Text style={styles.taskTitle}>{task.subject || `Task #${taskId}`}</Text>
                 <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
                   <Text style={[styles.statusText, { color: statusColor }]}>{statusName}</Text>
                 </View>
@@ -93,7 +98,7 @@ export default function TaskDetailModal({
 
               <View style={styles.metaRow}>
                 <Ionicons name="pricetag-outline" size={14} color="#0B5A3E" />
-                <Text style={styles.metaText}>{task.category_name || `Category ID #${task.category_id}`}</Text>
+                <Text style={styles.metaText}>{task.category_name || `Category ID #${task.category_id || 1}`}</Text>
               </View>
             </View>
 
@@ -112,7 +117,7 @@ export default function TaskDetailModal({
                   <Ionicons name="person-circle-outline" size={18} color="#2563EB" />
                   <Text style={styles.infoLabel}>Customer</Text>
                 </View>
-                <Text style={styles.infoValue}>{task.customerName || 'Registered Customer'}</Text>
+                <Text style={styles.infoValue}>{task.customerName || `Customer #${task.created_by}`}</Text>
               </View>
 
               <View style={styles.infoRow}>

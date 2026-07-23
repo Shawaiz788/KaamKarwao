@@ -4,61 +4,59 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
-  RefreshControl,
-  ActivityIndicator,
   Pressable,
+  RefreshControl,
+  Alert,
+  ToastAndroid,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth';
 import AdminHeader from '@/components/admin/AdminHeader';
 import AdminDrawerPanel from '@/components/admin/AdminDrawerPanel';
-import TaskDetailModal, { AdminTaskItem } from '@/components/admin/TaskDetailModal';
-import { getOpenTasksFromBackend } from '@/services/task';
+import StatusBadge from '@/components/admin/common/StatusBadge';
+import SearchBar from '@/components/admin/common/SearchBar';
+import EmptyState from '@/components/admin/common/EmptyState';
+import ConfirmDialog from '@/components/admin/common/ConfirmDialog';
+import TaskDetailModal from '@/components/admin/TaskDetailModal';
+import { getAllTasks, deleteTask } from '@/services/adminTasks.service';
+import { BackendTask } from '@/types';
 
-interface StatusFilter {
-  id: number | 'all';
-  label: string;
-}
-
-const STATUS_FILTERS: StatusFilter[] = [
-  { id: 'all', label: 'All Statuses' },
-  { id: 1, label: 'Searching' },
-  { id: 4, label: 'Completed' },
-  { id: 5, label: 'Cancelled' },
+const STATUS_FILTERS = [
+  { id: 'all', label: 'All Tasks' },
+  { id: 1, label: 'Open (1)' },
+  { id: 2, label: 'In Progress (2)' },
+  { id: 3, label: 'Completed (3)' },
+  { id: 4, label: 'Cancelled (4)' },
 ];
-
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function AdminTasksView() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { user } = useAuth();
+
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [tasks, setTasks] = useState<BackendTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tasks, setTasks] = useState<AdminTaskItem[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState<number | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTask, setSelectedTask] = useState<AdminTaskItem | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<number | 'all'>('all');
+  const [selectedTask, setSelectedTask] = useState<BackendTask | null>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+
+  // Confirm delete dialog state
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchTasks = async () => {
     try {
-      const openTasks = await getOpenTasksFromBackend();
-      const mapped: AdminTaskItem[] = (openTasks || []).map((t) => ({
-        id: t.id!,
-        subject: t.subject,
-        body: t.body,
-        price: t.price,
-        category_id: t.category_id,
-        status_id: t.status_id || 1,
-        customerName: (t as any).customer_name || 'Registered Customer',
-        workerName: (t as any).worker_name || 'Searching...',
-        created_at: t.created_at,
-      }));
-      setTasks(mapped);
+      setLoading(true);
+      const data = await getAllTasks();
+      setTasks(data);
     } catch (e) {
-      console.warn('[AdminTasksView] Error fetching tasks:', e);
+      console.warn('[AdminTasksView] Error loading tasks:', e);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -69,75 +67,79 @@ export default function AdminTasksView() {
     fetchTasks();
   }, []);
 
-  const handleRefresh = () => {
-    setRefreshing(true);
-    fetchTasks();
-  };
-
-  const handleOpenTask = (t: AdminTaskItem) => {
-    setSelectedTask(t);
-    setModalOpen(true);
-  };
-
-  const handleCancelTask = (taskId: number) => {
+  const handleStatusChange = (taskId: number, newStatusId: number) => {
     setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status_id: 5, statusName: 'Cancelled' } : t))
+      prev.map((t) => (t.id === taskId ? { ...t, status_id: newStatusId } : t))
     );
+  };
+
+  const confirmDeleteTask = async () => {
+    if (!deleteId) return;
+    try {
+      setDeleting(true);
+      await deleteTask(deleteId);
+      setTasks((prev) => prev.filter((t) => t.id !== deleteId));
+      if (Platform.OS === 'android') {
+        ToastAndroid.show('Task deleted successfully', ToastAndroid.SHORT);
+      } else {
+        Alert.alert('Deleted', 'Task deleted successfully.');
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'Could not delete task.');
+    } finally {
+      setDeleting(false);
+      setDeleteId(null);
+    }
   };
 
   const filteredTasks = tasks.filter((t) => {
     const matchesStatus = selectedStatus === 'all' || t.status_id === selectedStatus;
-    const q = searchQuery.toLowerCase();
     const matchesQuery =
-      (t.subject && t.subject.toLowerCase().includes(q)) ||
-      (t.body && t.body.toLowerCase().includes(q)) ||
-      (t.id && t.id.toString().includes(q));
+      (t.subject || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (t.body || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      String(t.id).includes(searchQuery);
     return matchesStatus && matchesQuery;
   });
 
   return (
     <View style={styles.container}>
       <AdminHeader
-        title="Manage Tasks"
-        subtitle={`System Tasks (${filteredTasks.length})`}
+        title="Task Management"
+        subtitle={`System Service Requests (${filteredTasks.length})`}
         onOpenDrawer={() => setDrawerOpen(true)}
         user={user}
       />
 
-      {/* Status Filters */}
+      {/* Filter Chips */}
       <View style={styles.filterRow}>
-        {STATUS_FILTERS.map((f) => {
-          const active = selectedStatus === f.id;
-          return (
-            <Pressable
-              key={String(f.id)}
-              style={[styles.filterChip, active && styles.filterChipActive]}
-              onPress={() => setSelectedStatus(f.id)}
-            >
-              <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
-                {f.label}
-              </Text>
-            </Pressable>
-          );
-        })}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+          {STATUS_FILTERS.map((f) => {
+            const active = selectedStatus === f.id;
+            return (
+              <Pressable
+                key={String(f.id)}
+                style={[styles.filterChip, active && styles.filterChipActive]}
+                onPress={() => setSelectedStatus(f.id as any)}
+              >
+                <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
+                  {f.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
       </View>
 
-      <View style={styles.searchBarContainer}>
-        <Ionicons name="search" size={18} color="#6B7280" />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search by task title, body or ID..."
-          placeholderTextColor="#9CA3AF"
+      {/* Search Input */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+        <SearchBar
           value={searchQuery}
           onChangeText={setSearchQuery}
+          placeholder="Search task by title, description or ID..."
         />
-        {searchQuery ? (
-          <Pressable onPress={() => setSearchQuery('')}>
-            <Ionicons name="close-circle" size={18} color="#9CA3AF" />
-          </Pressable>
-        ) : null}
       </View>
 
+      {/* Task List */}
       <ScrollView
         style={styles.content}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom + 24, 36) }]}
@@ -145,49 +147,86 @@ export default function AdminTasksView() {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={handleRefresh}
+            onRefresh={() => {
+              setRefreshing(true);
+              fetchTasks();
+            }}
             tintColor="#0B5A3E"
-            colors={['#0B5A3E']}
           />
         }
       >
-        {loading ? (
-          <View style={styles.center}>
-            <ActivityIndicator size="large" color="#0B5A3E" />
-            <Text style={styles.loadingText}>Fetching tasks from server...</Text>
-          </View>
-        ) : filteredTasks.length === 0 ? (
-          <View style={styles.center}>
-            <Ionicons name="documents-outline" size={48} color="#9CA3AF" />
-            <Text style={styles.emptyTitle}>No Tasks Found</Text>
-            <Text style={styles.emptySub}>No open system tasks match your search criteria.</Text>
-          </View>
+        {filteredTasks.length === 0 ? (
+          <EmptyState
+            title="No tasks found"
+            subtitle="Try adjusting your status filter or search text."
+            iconName="documents-outline"
+          />
         ) : (
           filteredTasks.map((t) => (
-            <Pressable key={t.id} style={styles.taskCard} onPress={() => handleOpenTask(t)}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.taskTitle}>{t.subject || `Task #${t.id}`}</Text>
-                <View style={styles.priceBadge}>
-                  <Text style={styles.taskPrice}>Rs. {t.price}</Text>
+            <View key={t.id} style={styles.taskCard}>
+              <View style={styles.taskHeader}>
+                <View style={styles.taskTitleRow}>
+                  <Text style={styles.taskTitle}>{t.subject || 'Task Request'}</Text>
+                  <StatusBadge status={t.status_id} />
                 </View>
+                <Text style={styles.taskBody} numberOfLines={2}>{t.body}</Text>
               </View>
-              <Text style={styles.taskBody} numberOfLines={2}>
-                {t.body || 'No description provided.'}
-              </Text>
-              <View style={styles.cardFooter}>
-                <Text style={styles.metaText}>Task ID: #{t.id}</Text>
-                <Text style={styles.metaText}>Category ID: #{t.category_id}</Text>
+
+              <View style={styles.metaRow}>
+                <Text style={styles.priceText}>Rs. {t.price}</Text>
+                <Text style={styles.metaText}>Customer #{t.created_by}</Text>
               </View>
-            </Pressable>
+
+              <View style={styles.actionRow}>
+                <Pressable
+                  style={styles.bidsBtn}
+                  onPress={() => router.push({ pathname: '/(protected)/(admin)/bids', params: { taskId: t.id } })}
+                >
+                  <Ionicons name="cash-outline" size={16} color="#0B5A3E" />
+                  <Text style={styles.bidsBtnText}>View Bids</Text>
+                </Pressable>
+
+                <Pressable
+                  style={styles.detailBtn}
+                  onPress={() => {
+                    setSelectedTask(t);
+                    setDetailModalOpen(true);
+                  }}
+                >
+                  <Ionicons name="create-outline" size={16} color="#2563EB" />
+                  <Text style={styles.detailBtnText}>Manage</Text>
+                </Pressable>
+
+                <Pressable
+                  style={styles.deleteBtn}
+                  onPress={() => setDeleteId(t.id!)}
+                >
+                  <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                </Pressable>
+              </View>
+            </View>
           ))
         )}
       </ScrollView>
 
+      {/* Task Details & Status Update Modal */}
       <TaskDetailModal
         task={selectedTask}
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onCancelTask={handleCancelTask}
+        isOpen={detailModalOpen}
+        onClose={() => setDetailModalOpen(false)}
+        onStatusChange={handleStatusChange}
+      />
+
+      {/* Confirmation Dialog before destructive action */}
+      <ConfirmDialog
+        visible={Boolean(deleteId)}
+        title="Delete Task"
+        message="Are you sure you want to delete this task? This operation cannot be undone."
+        confirmLabel="Delete"
+        isDestructive
+        isLoading={deleting}
+        onConfirm={confirmDeleteTask}
+        onCancel={() => setDeleteId(null)}
       />
 
       <AdminDrawerPanel
@@ -205,10 +244,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
   },
   filterRow: {
-    flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingTop: 14,
-    gap: 8,
+    paddingTop: 12,
   },
   filterChip: {
     paddingHorizontal: 12,
@@ -230,96 +267,95 @@ const styles = StyleSheet.create({
   filterChipTextActive: {
     color: '#FFFFFF',
   },
-  searchBarContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    margin: 16,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    gap: 10,
-    height: 46,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  searchInput: {
-    flex: 1,
-    color: '#111827',
-    fontSize: 14,
-  },
   content: {
     flex: 1,
+    marginTop: 12,
   },
   scrollContent: {
     paddingHorizontal: 16,
     paddingBottom: 24,
     gap: 12,
   },
-  center: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-    gap: 10,
-  },
-  loadingText: {
-    color: '#6B7280',
-    fontSize: 14,
-  },
-  emptyTitle: {
-    color: '#111827',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  emptySub: {
-    color: '#9CA3AF',
-    fontSize: 13,
-  },
   taskCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 16,
-    gap: 8,
+    borderRadius: 16,
+    padding: 14,
     borderWidth: 1,
     borderColor: '#F3F4F6',
+    gap: 10,
   },
-  cardHeader: {
+  taskHeader: {
+    gap: 4,
+  },
+  taskTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  taskTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
+    flex: 1,
+  },
+  taskBody: {
+    fontSize: 12.5,
+    color: '#6B7280',
+    lineHeight: 17,
+  },
+  metaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  taskTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0B5A3E',
-    flex: 1,
-  },
-  priceBadge: {
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  taskPrice: {
-    fontSize: 14,
+  priceText: {
+    fontSize: 15,
     fontWeight: '800',
-    color: '#D97706',
+    color: '#0B5A3E',
   },
-  taskBody: {
-    fontSize: 13,
-    color: '#4B5563',
-    lineHeight: 18,
+  metaText: {
+    fontSize: 12,
+    color: '#9CA3AF',
   },
-  cardFooter: {
+  actionRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
-    marginTop: 4,
   },
-  metaText: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    fontWeight: '600',
+  bidsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  bidsBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0B5A3E',
+  },
+  detailBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  detailBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2563EB',
+  },
+  deleteBtn: {
+    padding: 6,
+    marginLeft: 'auto',
   },
 });

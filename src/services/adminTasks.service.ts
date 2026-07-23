@@ -1,0 +1,82 @@
+import { fetchWithAuth } from './fetchClient';
+import { BackendTask } from '@/types';
+
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+const API_URL = BASE_URL ? BASE_URL.replace(/\/$/, '') : '';
+
+export const getAllTasks = async (): Promise<BackendTask[]> => {
+  const response = await fetchWithAuth(`${API_URL}/app/task/`);
+  const text = await response.text();
+  if (!response.ok) {
+    if (response.status === 404) return [];
+    throw new Error(`Failed to fetch tasks. Status: ${response.status}`);
+  }
+  const data = JSON.parse(text);
+  return Array.isArray(data) ? data : data.results || [];
+};
+
+export const getOpenTasks = async (): Promise<BackendTask[]> => {
+  const response = await fetchWithAuth(`${API_URL}/app/task/open/`);
+  const text = await response.text();
+  if (!response.ok) {
+    if (response.status === 404) return [];
+    throw new Error(`Failed to fetch open tasks. Status: ${response.status}`);
+  }
+  const data = JSON.parse(text);
+  return Array.isArray(data) ? data : data.results || [];
+};
+
+export const getTaskById = async (id: number): Promise<BackendTask | null> => {
+  const response = await fetchWithAuth(`${API_URL}/app/task/${id}/`);
+  const text = await response.text();
+  if (!response.ok) {
+    if (response.status === 404) return null;
+    throw new Error(`Failed to fetch task ${id}. Status: ${response.status}`);
+  }
+  return JSON.parse(text);
+};
+
+export const updateTask = async (id: number, data: Partial<BackendTask>): Promise<BackendTask> => {
+  const response = await fetchWithAuth(`${API_URL}/app/task/${id}/`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  const text = await response.text();
+  if (!response.ok) {
+    throw new Error(`Failed to update task ${id}. Status: ${response.status}`);
+  }
+  return JSON.parse(text);
+};
+
+export const deleteTask = async (id: number): Promise<boolean> => {
+  const response = await fetchWithAuth(`${API_URL}/app/task/${id}/`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to delete task ${id}. Status: ${response.status}`);
+  }
+  return true;
+};
+
+export const getCustomerTasks = async (userId: number): Promise<BackendTask[]> => {
+  const response = await fetchWithAuth(`${API_URL}/app/task/customer/${userId}/`);
+  const text = await response.text();
+  if (!response.ok) {
+    if (response.status === 404) return [];
+    throw new Error(`Failed to fetch customer tasks. Status: ${response.status}`);
+  }
+  const data = JSON.parse(text);
+  return Array.isArray(data) ? data : data.results || [];
+};
+
+export const getWorkerTasks = async (workerId: number): Promise<BackendTask[]> => {
+  const response = await fetchWithAuth(`${API_URL}/app/task/worker/${workerId}/`);
+  const text = await response.text();
+  if (!response.ok) {
+    if (response.status === 404) return [];
+    throw new Error(`Failed to fetch worker tasks. Status: ${response.status}`);
+  }
+  const data = JSON.parse(text);
+  return Array.isArray(data) ? data : data.results || [];
+};

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -9,20 +9,14 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/auth';
 import AdminHeader from '@/components/admin/AdminHeader';
-import AdminStatCard from '@/components/admin/AdminStatCard';
 import AdminDrawerPanel from '@/components/admin/AdminDrawerPanel';
-import { getOpenTasksFromBackend } from '@/services/task';
-
-const TRANSACTIONS = [
-  { id: 'TXN-9012', user: 'Ali Khan', amount: 1500, fee: 150, type: 'Task Payment', status: 'Settled', date: 'Today, 2:30 PM' },
-  { id: 'TXN-9011', user: 'Usman Electrician', amount: 3200, fee: 320, type: 'Worker Payout', status: 'Settled', date: 'Today, 11:15 AM' },
-  { id: 'TXN-9010', user: 'Hassan Ahmed', amount: 800, fee: 80, type: 'Task Payment', status: 'Pending', date: 'Yesterday' },
-  { id: 'TXN-9009', user: 'Zara Worker', amount: 2500, fee: 250, type: 'Task Payment', status: 'Settled', date: '22 Jul 2026' },
-];
-
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import StatCard from '@/components/admin/common/StatCard';
+import { SkeletonCard } from '@/components/admin/common/SkeletonLoader';
+import EmptyState from '@/components/admin/common/EmptyState';
+import { useAdminDashboard } from '@/hooks/admin/useAdminDashboard';
 
 export default function AdminDashboardView() {
   const insets = useSafeAreaInsets();
@@ -30,35 +24,20 @@ export default function AdminDashboardView() {
   const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [taskCount, setTaskCount] = useState(0);
 
-  const fetchDashboardData = async () => {
-    try {
-      const openTasks = await getOpenTasksFromBackend();
-      setTaskCount(openTasks.length);
-    } catch (e) {
-      console.warn('[AdminDashboard] Error fetching stats:', e);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+  const { stats, tasks, openTasks, reviews, isLoading, refetch } = useAdminDashboard();
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
-    fetchDashboardData();
+    await refetch();
+    setRefreshing(false);
   };
 
   return (
     <View style={styles.container}>
       <AdminHeader
         title="Dashboard"
-        subtitle="Financial Revenue & Platform Overview"
+        subtitle="Platform Operational & System Overview"
         onOpenDrawer={() => setDrawerOpen(true)}
         user={user}
       />
@@ -76,93 +55,118 @@ export default function AdminDashboardView() {
           />
         }
       >
-        {/* Financial KPI Stats Grid */}
+        <Text style={styles.sectionTitle}>Key System Metrics</Text>
+
+        {/* 10 Required Stat Cards Grid */}
         <View style={styles.statsGrid}>
-          <AdminStatCard
-            label="Gross Volume"
-            value="Rs. 148,500"
-            iconName="cash"
-            accentColor="#0B5A3E"
-            subValue="Total transactions"
-          />
-          <AdminStatCard
-            label="Net Commission"
-            value="Rs. 14,850"
-            iconName="trending-up"
-            accentColor="#D97706"
-            subValue="10% Platform Cut"
-          />
+          <StatCard label="Total Users" value={stats.totalUsers} iconName="people" accentColor="#3B82F6" />
+          <StatCard label="Total Professionals" value={stats.totalPros} iconName="construct" accentColor="#D97706" />
         </View>
 
         <View style={styles.statsGrid}>
-          <AdminStatCard
-            label="Open Tasks"
-            value={loading ? '...' : taskCount}
-            iconName="list"
-            accentColor="#3B82F6"
-            subValue="Live system requests"
-          />
-          <AdminStatCard
-            label="Pending Payouts"
-            value="Rs. 12,400"
-            iconName="wallet"
-            accentColor="#10B981"
-            subValue="Worker Payout Queue"
-          />
+          <StatCard label="Verified Pros" value={stats.verifiedPros} iconName="shield-checkmark" accentColor="#0B5A3E" />
+          <StatCard label="Total Tasks" value={stats.totalTasks} iconName="list" accentColor="#8B5CF6" />
         </View>
 
-        {/* Recent Financial Ledger */}
+        <View style={styles.statsGrid}>
+          <StatCard label="Open Tasks" value={stats.openTasks} iconName="time" accentColor="#F59E0B" />
+          <StatCard label="Total Reviews" value={stats.totalReviews} iconName="star" accentColor="#EC4899" />
+        </View>
+
+        <View style={styles.statsGrid}>
+          <StatCard label="Categories" value={stats.totalCategories} iconName="grid" accentColor="#10B981" />
+          <StatCard label="Countries" value={stats.totalCountries} iconName="globe" accentColor="#6366F1" />
+        </View>
+
+        <View style={styles.statsGrid}>
+          <StatCard label="Cities" value={stats.totalCities} iconName="business" accentColor="#06B6D4" />
+          <StatCard label="Areas" value={stats.totalAreas} iconName="map" accentColor="#84CC16" />
+        </View>
+
+        {/* Recent Tasks */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Financial Transactions</Text>
+          <Text style={styles.sectionTitle}>Recent Tasks</Text>
+          <Pressable onPress={() => router.push('/(protected)/(admin)/tasks')}>
+            <Text style={styles.seeAllBtn}>View All</Text>
+          </Pressable>
         </View>
 
-        {TRANSACTIONS.map((tx) => (
-          <View key={tx.id} style={styles.txCard}>
-            <View style={styles.txIconBox}>
-              <Ionicons name="receipt-outline" size={20} color="#0B5A3E" />
+        {isLoading ? (
+          <SkeletonCard />
+        ) : tasks.length === 0 ? (
+          <EmptyState title="No tasks recorded" subtitle="Live tasks will appear here." iconName="documents-outline" />
+        ) : (
+          tasks.slice(0, 3).map((task) => (
+            <View key={task.id} style={styles.listItem}>
+              <View style={styles.itemIconBox}>
+                <Ionicons name="document-text-outline" size={20} color="#0B5A3E" />
+              </View>
+              <View style={styles.itemTextCol}>
+                <Text style={styles.itemTitle}>{task.subject}</Text>
+                <Text style={styles.itemSub}>ID: {task.id} • Budget: Rs. {task.price}</Text>
+              </View>
+              <View style={styles.badgeBox}>
+                <Text style={styles.badgeText}>Status {task.status_id}</Text>
+              </View>
             </View>
+          ))
+        )}
 
-            <View style={styles.txTextCol}>
-              <Text style={styles.txUser}>{tx.user}</Text>
-              <Text style={styles.txMeta}>{tx.id} • {tx.type} • {tx.date}</Text>
+        {/* Recent Reviews */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Recent Reviews</Text>
+          <Pressable onPress={() => router.push('/(protected)/(admin)/reviews')}>
+            <Text style={styles.seeAllBtn}>View All</Text>
+          </Pressable>
+        </View>
+
+        {isLoading ? (
+          <SkeletonCard />
+        ) : reviews.length === 0 ? (
+          <EmptyState title="No reviews found" subtitle="User ratings will appear here." iconName="star-outline" />
+        ) : (
+          reviews.slice(0, 3).map((rev) => (
+            <View key={rev.id} style={styles.listItem}>
+              <View style={[styles.itemIconBox, { backgroundColor: '#FEF3C7' }]}>
+                <Ionicons name="star" size={18} color="#D97706" />
+              </View>
+              <View style={styles.itemTextCol}>
+                <Text style={styles.itemTitle}>Rating: {rev.rating} / 5.0</Text>
+                <Text style={styles.itemSub}>{rev.body}</Text>
+              </View>
             </View>
+          ))
+        )}
 
-            <View style={styles.txRightCol}>
-              <Text style={styles.txAmount}>Rs. {tx.amount}</Text>
-              <Text style={styles.txFee}>Fee: Rs. {tx.fee}</Text>
-            </View>
-          </View>
-        ))}
-
-        {/* Management Shortcuts */}
-        <Text style={styles.sectionTitle}>Management Modules</Text>
-
-        <Pressable
-          style={styles.actionCard}
-          onPress={() => router.push('/(protected)/(admin)/tasks')}
-        >
-          <View style={[styles.actionIconBox, { backgroundColor: '#ECFDF5' }]}>
-            <Ionicons name="documents" size={24} color="#0B5A3E" />
-          </View>
-          <View style={styles.actionTextCol}>
-            <Text style={styles.actionTitle}>Manage Tasks & Requests</Text>
-            <Text style={styles.actionSub}>View open tasks, categories, and job statuses</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-        </Pressable>
+        {/* Shortcuts */}
+        <Text style={styles.sectionTitle}>Quick Management Shortcuts</Text>
 
         <Pressable
           style={styles.actionCard}
           onPress={() => router.push('/(protected)/(admin)/users')}
         >
-          <View style={[styles.actionIconBox, { backgroundColor: '#FEF3C7' }]}>
-            <Ionicons name="people-circle" size={24} color="#D97706" />
+          <View style={[styles.actionIconBox, { backgroundColor: '#EFF6FF' }]}>
+            <Ionicons name="people" size={22} color="#2563EB" />
           </View>
           <View style={styles.actionTextCol}>
-            <Text style={styles.actionTitle}>Manage Platform Users</Text>
-            <Text style={styles.actionSub}>View Customers (ID 2), Workers (ID 3), and Admins (ID 1)</Text>
+            <Text style={styles.actionTitle}>User & Professional Directory</Text>
+            <Text style={styles.actionSub}>Verify workers, view profiles & earnings</Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+          <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+        </Pressable>
+
+        <Pressable
+          style={styles.actionCard}
+          onPress={() => router.push('/(protected)/(admin)/masterdata')}
+        >
+          <View style={[styles.actionIconBox, { backgroundColor: '#ECFDF5' }]}>
+            <Ionicons name="layers" size={22} color="#0B5A3E" />
+          </View>
+          <View style={styles.actionTextCol}>
+            <Text style={styles.actionTitle}>Master Data & Locations</Text>
+            <Text style={styles.actionSub}>Countries, Cities, Areas, User Types, Statuses</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
         </Pressable>
       </ScrollView>
 
@@ -185,24 +189,72 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    gap: 16,
-  },
-  statsGrid: {
-    flexDirection: 'row',
     gap: 12,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 8,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: '#111827',
+    marginTop: 4,
   },
-  txCard: {
+  seeAllBtn: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0B5A3E',
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  listItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 12,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  itemIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#ECFDF5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  itemTextCol: {
+    flex: 1,
+  },
+  itemTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  itemSub: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  badgeBox: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#4B5563',
+  },
+  actionCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
@@ -212,54 +264,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#F3F4F6',
   },
-  txIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: '#ECFDF5',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  txTextCol: {
-    flex: 1,
-  },
-  txUser: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  txMeta: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  txRightCol: {
-    alignItems: 'flex-end',
-  },
-  txAmount: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#0B5A3E',
-  },
-  txFee: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#D97706',
-    marginTop: 2,
-  },
-  actionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    gap: 14,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-  },
   actionIconBox: {
-    width: 46,
-    height: 46,
+    width: 42,
+    height: 42,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
@@ -268,12 +275,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   actionTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: '#111827',
   },
   actionSub: {
-    fontSize: 12,
+    fontSize: 11.5,
     color: '#6B7280',
     marginTop: 2,
   },
