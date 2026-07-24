@@ -64,12 +64,14 @@ export interface UserType {
 
 // ─── Pro Earnings Types ───────────────────────────────────────────────────────
 export interface ProEarnings {
+  id?: number;
   worker_id: number;
   daily_earning: number;
   weekly_earning: number;
   total_earning: number;
-  jobs_done: number;
-  updated_at: string;
+  jobs_done?: number;
+  total_jobs_done?: number;
+  updated_at?: string;
   daily_jobs_done: number;
 }
 

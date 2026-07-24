@@ -14,11 +14,6 @@ export const createProEarnings = async (workerId: number | string): Promise<ProE
         },
         body: JSON.stringify({
             worker_id: Number(workerId),
-            daily_earning: 0,
-            weekly_earning: 0,
-            total_earning: 0,
-            total_jobs_done: 0,
-            daily_jobs_done: 0,
         }),
     });
 
@@ -64,9 +59,11 @@ export const getProEarnings = async (workerId: number | string): Promise<ProEarn
                     daily_earning: 0,
                     weekly_earning: 0,
                     total_earning: 0,
+                    jobs_done: 0,
                     total_jobs_done: 0,
                     daily_jobs_done: 0,
-                } as ProEarnings;
+                    updated_at: new Date().toISOString(),
+                } as unknown as ProEarnings;
             }
         }
         throw new Error(`Failed to fetch earnings details. Status: ${response.status}`);
