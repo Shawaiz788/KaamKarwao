@@ -462,76 +462,79 @@ export default function ActiveTaskScreen({ onBack }: ActiveTaskScreenProps) {
         )}
 
         {/* Accepted Professional Card */}
-        {activeTask.status === 'accepted' && activeTask.acceptedBid && (
-          <View style={styles.acceptedSection}>
-            <View style={styles.alertSuccess}>
-              <Ionicons name="checkmark-circle" size={24} color="#047857" style={{ marginRight: 8 }} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.alertSuccessTitle}>Professional Assigned!</Text>
-                <Text style={styles.alertSuccessText}>
-                  {activeTask.acceptedBid.is_profile_loading ? 'Service Provider' : activeTask.acceptedBid.name.split(' ')[0]} is arriving in ~{activeTask.acceptedBid.timeEstimate}.
-                </Text>
-              </View>
-            </View>
-
-            {activeTask.acceptedBid.is_profile_loading ? (
-              <View style={styles.proProfileCard}>
-                <View style={[styles.proLargeAvatar, styles.skeletonBox]} />
-                <View style={[styles.skeletonLine, { width: 140, height: 20, marginBottom: 8 }]} />
-                <View style={[styles.skeletonLine, { width: 100, height: 14, marginBottom: 16 }]} />
-              </View>
-            ) : (
-              <View style={styles.proProfileCard}>
-                <Pressable
-                  style={{ alignItems: 'center', width: '100%', marginBottom: 16 }}
-                  onPress={() => {
-                    const proId = (activeTask.acceptedBid as any)?.user_id;
-                    if (proId) {
-                      setSelectedProInfo({ id: proId, name: activeTask.acceptedBid.name });
-                      setProReviewsVisible(true);
-                    }
-                  }}
-                >
-                  <Image source={{ uri: activeTask.acceptedBid.avatar }} style={styles.proLargeAvatar} />
-                  <Text style={styles.proLargeName}>{activeTask.acceptedBid.name}</Text>
-                  <View style={styles.proLargeRating}>
-                    <Ionicons name="star" size={18} color="#F59E0B" style={{ marginRight: 4 }} />
-                    <Text style={styles.proLargeRatingText}>
-                      {activeTask.acceptedBid.rating} ({activeTask.acceptedBid.reviewsCount} reviews)
-                    </Text>
-                  </View>
-                  <Text style={styles.tapToViewReviewsHint}>Tap profile to see reviews</Text>
-                </Pressable>
-
-                <View style={styles.proContactRow}>
-                  <Pressable
-                    style={[styles.contactCircleBtn, styles.contactPhone]}
-                    onPress={() => handleCall(activeTask.acceptedBid)}
-                  >
-                    <Ionicons name="call" size={20} color="#FFFFFF" />
-                  </Pressable>
-
-                  <Pressable
-                    style={[styles.contactCircleBtn, styles.contactWhatsApp]}
-                    onPress={() => handleWhatsApp(activeTask.acceptedBid)}
-                  >
-                    <Ionicons name="logo-whatsapp" size={20} color="#FFFFFF" />
-                  </Pressable>
-
-                  <Pressable
-                    style={[styles.contactCircleBtn, styles.contactChat]}
-                    onPress={() => setChatVisible(true)}
-                  >
-                    <Ionicons name="chatbubble" size={20} color="#FFFFFF" />
-                    {activeChatMessages.length > 0 && (
-                      <View style={styles.chatBadge} />
-                    )}
-                  </Pressable>
+        {activeTask.status === 'accepted' && activeTask.acceptedBid && (() => {
+          const acceptedBid = activeTask.acceptedBid;
+          return (
+            <View style={styles.acceptedSection}>
+              <View style={styles.alertSuccess}>
+                <Ionicons name="checkmark-circle" size={24} color="#047857" style={{ marginRight: 8 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.alertSuccessTitle}>Professional Assigned!</Text>
+                  <Text style={styles.alertSuccessText}>
+                    {acceptedBid.is_profile_loading ? 'Service Provider' : acceptedBid.name.split(' ')[0]} is arriving in ~{acceptedBid.timeEstimate}.
+                  </Text>
                 </View>
               </View>
-            )}
-          </View>
-        )}
+
+              {acceptedBid.is_profile_loading ? (
+                <View style={styles.proProfileCard}>
+                  <View style={[styles.proLargeAvatar, styles.skeletonBox]} />
+                  <View style={[styles.skeletonLine, { width: 140, height: 20, marginBottom: 8 }]} />
+                  <View style={[styles.skeletonLine, { width: 100, height: 14, marginBottom: 16 }]} />
+                </View>
+              ) : (
+                <View style={styles.proProfileCard}>
+                  <Pressable
+                    style={{ alignItems: 'center', width: '100%', marginBottom: 16 }}
+                    onPress={() => {
+                      const proId = (acceptedBid as any)?.user_id;
+                      if (proId) {
+                        setSelectedProInfo({ id: proId, name: acceptedBid.name });
+                        setProReviewsVisible(true);
+                      }
+                    }}
+                  >
+                    <Image source={{ uri: acceptedBid.avatar }} style={styles.proLargeAvatar} />
+                    <Text style={styles.proLargeName}>{acceptedBid.name}</Text>
+                    <View style={styles.proLargeRating}>
+                      <Ionicons name="star" size={18} color="#F59E0B" style={{ marginRight: 4 }} />
+                      <Text style={styles.proLargeRatingText}>
+                        {acceptedBid.rating} ({acceptedBid.reviewsCount} reviews)
+                      </Text>
+                    </View>
+                    <Text style={styles.tapToViewReviewsHint}>Tap profile to see reviews</Text>
+                  </Pressable>
+
+                  <View style={styles.proContactRow}>
+                    <Pressable
+                      style={[styles.contactCircleBtn, styles.contactPhone]}
+                      onPress={() => handleCall(acceptedBid)}
+                    >
+                      <Ionicons name="call" size={20} color="#FFFFFF" />
+                    </Pressable>
+
+                    <Pressable
+                      style={[styles.contactCircleBtn, styles.contactWhatsApp]}
+                      onPress={() => handleWhatsApp(acceptedBid)}
+                    >
+                      <Ionicons name="logo-whatsapp" size={20} color="#FFFFFF" />
+                    </Pressable>
+
+                    <Pressable
+                      style={[styles.contactCircleBtn, styles.contactChat]}
+                      onPress={() => setChatVisible(true)}
+                    >
+                      <Ionicons name="chatbubble" size={20} color="#FFFFFF" />
+                      {activeChatMessages.length > 0 && (
+                        <View style={styles.chatBadge} />
+                      )}
+                    </Pressable>
+                  </View>
+                </View>
+              )}
+            </View>
+          );
+        })()}
       </ScrollView>
 
       {/* Cancel Button */}
