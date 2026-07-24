@@ -60,10 +60,38 @@ export async function sendQuickBidViaWebSocket(
     estimatedHours: number = 1
 ): Promise<void> {
     return new Promise((resolve, reject) => {
+        let isSettled = false;
+        let ws: WebSocket | null = null;
+
+        const cleanup = () => {
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+            }
+            if (ws) {
+                ws.onopen = null;
+                ws.onmessage = null;
+                ws.onerror = null;
+                ws.onclose = null;
+                try {
+                    ws.close(1000);
+                } catch (e) {}
+                ws = null;
+            }
+        };
+
+        const timeoutId = setTimeout(() => {
+            if (!isSettled) {
+                console.warn('[sendQuickBidViaWebSocket] Timeout waiting for bid confirmation.');
+                isSettled = true;
+                cleanup();
+                reject(new Error('Response timeout from server.'));
+            }
+        }, 6000);
+
         try {
             const url = `${WS_BASE}/ws/bidding/${taskId}/`;
             console.log('[sendQuickBidViaWebSocket] Opening quick socket connection to:', url);
-            const ws = new WebSocket(url);
+            ws = new WebSocket(url);
 
             ws.onopen = () => {
                 const payload = {
@@ -73,22 +101,56 @@ export async function sendQuickBidViaWebSocket(
                     estimated_hours: estimatedHours,
                 };
                 console.log('[sendQuickBidViaWebSocket] Sending payload:', payload);
-                ws.send(JSON.stringify(payload));
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify(payload));
+                }
+            };
 
-                // Close socket cleanly after brief delay to allow server to receive message
-                setTimeout(() => {
-                    ws.close(1000);
-                    resolve();
-                }, 500);
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('[sendQuickBidViaWebSocket] Received message:', data);
+                    if (data.type === 'bid_placed' && String(data.bid?.user_id) === String(userId)) {
+                        if (!isSettled) {
+                            isSettled = true;
+                            cleanup();
+                            resolve();
+                        }
+                    } else if (data.type === 'bidding_closed') {
+                        if (!isSettled) {
+                            isSettled = true;
+                            cleanup();
+                            reject(new Error('Bidding is closed for this task.'));
+                        }
+                    }
+                } catch (e) {
+                    console.warn('[sendQuickBidViaWebSocket] Error parsing response message:', e);
+                }
             };
 
             ws.onerror = (err) => {
                 console.error('[sendQuickBidViaWebSocket] Quick bid socket error:', err);
-                try { ws.close(); } catch (e) { }
-                reject(err);
+                if (!isSettled) {
+                    isSettled = true;
+                    cleanup();
+                    reject(err);
+                }
+            };
+
+            ws.onclose = (event) => {
+                console.log(`[sendQuickBidViaWebSocket] Quick bid socket closed. Code: ${event.code}`);
+                if (!isSettled) {
+                    isSettled = true;
+                    cleanup();
+                    reject(new Error(`Connection closed. Code: ${event.code}`));
+                }
             };
         } catch (e) {
-            reject(e);
+            if (!isSettled) {
+                isSettled = true;
+                cleanup();
+                reject(e);
+            }
         }
     });
 }

@@ -28,6 +28,7 @@ import { getTaskByIdFromBackend } from '@/services/task';
 import { getCustomerProfile } from '@/services/customer';
 import { createReview } from '@/services/review';
 import ReviewModal from '@/components/ReviewModal';
+import UserReviewsModal from '@/components/UserReviewsModal';
 
 const { width } = Dimensions.get('window');
 
@@ -102,6 +103,8 @@ export default function ActiveTaskScreen({ onBack }: ActiveTaskScreenProps) {
   const [completedTaskInfo, setCompletedTaskInfo] = useState<{ id: number; proName: string; proId?: number; title: string } | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancellationStep, setCancellationStep] = useState('Cancelling task request...');
+  const [proReviewsVisible, setProReviewsVisible] = useState(false);
+  const [selectedProInfo, setSelectedProInfo] = useState<{ id: number; name: string } | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   // Periodic API status polling every 35s on active task
@@ -409,16 +412,26 @@ export default function ActiveTaskScreen({ onBack }: ActiveTaskScreenProps) {
                 return (
                   <View key={bid.id} style={styles.bidCard}>
                     <View style={styles.bidHeader}>
-                      <Image source={{ uri: bid.avatar }} style={styles.bidAvatar} />
-                      <View style={styles.bidHeaderInfo}>
-                        <Text style={styles.bidName}>{bid.name}</Text>
-                        <View style={styles.ratingRow}>
-                          <Ionicons name="star" size={14} color="#F59E0B" />
-                          <Text style={styles.ratingText}>
-                            {bid.rating} ({bid.reviewsCount} reviews)
-                          </Text>
+                      <Pressable
+                        style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
+                        onPress={() => {
+                          if (bid.user_id) {
+                            setSelectedProInfo({ id: bid.user_id, name: bid.name });
+                            setProReviewsVisible(true);
+                          }
+                        }}
+                      >
+                        <Image source={{ uri: bid.avatar }} style={styles.bidAvatar} />
+                        <View style={styles.bidHeaderInfo}>
+                          <Text style={styles.bidName}>{bid.name}</Text>
+                          <View style={styles.ratingRow}>
+                            <Ionicons name="star" size={14} color="#F59E0B" />
+                            <Text style={styles.ratingText}>
+                              {bid.rating} ({bid.reviewsCount} reviews)
+                            </Text>
+                          </View>
                         </View>
-                      </View>
+                      </Pressable>
                       <View style={styles.bidPriceContainer}>
                         <Text style={styles.bidPrice}>Rs. {bid.price}</Text>
                         <Text style={styles.bidTime}>{bid.timeEstimate} away</Text>
@@ -469,14 +482,26 @@ export default function ActiveTaskScreen({ onBack }: ActiveTaskScreenProps) {
               </View>
             ) : (
               <View style={styles.proProfileCard}>
-                <Image source={{ uri: activeTask.acceptedBid.avatar }} style={styles.proLargeAvatar} />
-                <Text style={styles.proLargeName}>{activeTask.acceptedBid.name}</Text>
-                <View style={styles.proLargeRating}>
-                  <Ionicons name="star" size={18} color="#F59E0B" style={{ marginRight: 4 }} />
-                  <Text style={styles.proLargeRatingText}>
-                    {activeTask.acceptedBid.rating} ({activeTask.acceptedBid.reviewsCount} reviews)
-                  </Text>
-                </View>
+                <Pressable
+                  style={{ alignItems: 'center', width: '100%', marginBottom: 16 }}
+                  onPress={() => {
+                    const proId = (activeTask.acceptedBid as any)?.user_id;
+                    if (proId) {
+                      setSelectedProInfo({ id: proId, name: activeTask.acceptedBid.name });
+                      setProReviewsVisible(true);
+                    }
+                  }}
+                >
+                  <Image source={{ uri: activeTask.acceptedBid.avatar }} style={styles.proLargeAvatar} />
+                  <Text style={styles.proLargeName}>{activeTask.acceptedBid.name}</Text>
+                  <View style={styles.proLargeRating}>
+                    <Ionicons name="star" size={18} color="#F59E0B" style={{ marginRight: 4 }} />
+                    <Text style={styles.proLargeRatingText}>
+                      {activeTask.acceptedBid.rating} ({activeTask.acceptedBid.reviewsCount} reviews)
+                    </Text>
+                  </View>
+                  <Text style={styles.tapToViewReviewsHint}>Tap profile to see reviews</Text>
+                </Pressable>
 
                 <View style={styles.proContactRow}>
                   <Pressable
@@ -630,6 +655,18 @@ export default function ActiveTaskScreen({ onBack }: ActiveTaskScreenProps) {
           </View>
         </View>
       </Modal>
+
+      {/* Pro Reviews Modal */}
+      <UserReviewsModal
+        isVisible={proReviewsVisible}
+        onClose={() => {
+          setProReviewsVisible(false);
+          setSelectedProInfo(null);
+        }}
+        userId={selectedProInfo?.id}
+        userName={selectedProInfo?.name || ''}
+        role="pro"
+      />
       </View>
     </SafeAreaView>
   );
@@ -961,6 +998,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#4B5563',
     fontWeight: '500',
+  },
+  tapToViewReviewsHint: {
+    fontSize: 12,
+    color: '#10B981',
+    fontWeight: '600',
+    marginTop: -12,
+    marginBottom: 16,
   },
   proContactRow: {
     flexDirection: 'row',

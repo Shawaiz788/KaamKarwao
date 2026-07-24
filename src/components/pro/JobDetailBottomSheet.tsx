@@ -25,6 +25,7 @@ import { useBiddingWebSocket } from '@/hooks/useBiddingWebSocket';
 import { useAuth } from '@/context/auth';
 import { getCategoryStyle } from '@/store/categoryStore';
 import { getTaskAttachments } from '@/services/task';
+import UserReviewsModal from '@/components/UserReviewsModal';
 
 const { height: WINDOW_H } = Dimensions.get('window');
 const { height: SCREEN_H_SCREEN } = Dimensions.get('screen');
@@ -195,6 +196,7 @@ export default function JobDetailBottomSheet({
     const [localAttachments, setLocalAttachments] = useState<any[]>(job?.attachments || []);
     const waitingTimer = useRef<NodeJS.Timeout | null>(null);
     const countdownTimer = useRef<NodeJS.Timeout | null>(null);
+    const [customerReviewsVisible, setCustomerReviewsVisible] = useState(false);
 
     // Synchronize local visibility and attachments when job changes or sheet opens
     useEffect(() => {
@@ -554,7 +556,14 @@ export default function JobDetailBottomSheet({
                                         </View>
                                     </View>
                                 ) : (
-                                    <>
+                                    <Pressable
+                                        style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}
+                                        onPress={() => {
+                                            if (job?.customer_id) {
+                                                setCustomerReviewsVisible(true);
+                                            }
+                                        }}
+                                    >
                                         <View style={styles.custAvatar}>
                                             {job?.customer_image ? (
                                                 <Image source={{ uri: job.customer_image }} style={styles.custAvatarImage} />
@@ -567,10 +576,10 @@ export default function JobDetailBottomSheet({
                                         <View style={styles.custInfo}>
                                             <Text style={styles.custName}>{job?.customer_name}</Text>
                                             {job?.customer_rating !== undefined && job?.customer_rating !== null && (
-                                                <Text style={styles.custRating}>★ {Number(job.customer_rating).toFixed(1)} rating</Text>
+                                                <Text style={styles.custRating}>★ {Number(job.customer_rating).toFixed(1)} rating (Tap to view reviews)</Text>
                                             )}
                                         </View>
-                                    </>
+                                    </Pressable>
                                 )}
                             </View>
                         </View>
@@ -765,6 +774,15 @@ export default function JobDetailBottomSheet({
                     </TouchableOpacity>
                 </View>
             )}
+
+            {/* Customer Reviews Modal */}
+            <UserReviewsModal
+                isVisible={customerReviewsVisible}
+                onClose={() => setCustomerReviewsVisible(false)}
+                userId={job?.customer_id}
+                userName={job?.customer_name || 'Customer'}
+                role="customer"
+            />
         </View>
     );
 }

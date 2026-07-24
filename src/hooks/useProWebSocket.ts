@@ -34,11 +34,9 @@ type WSMessage =
     }
     | { type: 'heartbeat'; task?: null }
     | {
-        type: 'task_deleted' | 'task_cancelled' | 'task_assigned' | 'task_accepted' | 'bidding_closed' | 'task_closed';
+        type: 'task_deleted';
         task_id?: number;
         worker_id?: number;
-        id?: number;
-        task?: any;
     };
 
 export type WSStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
@@ -227,15 +225,15 @@ export function useProWebSocket({
 
                 const closedTypes = ['task_assigned', 'task_accepted', 'bidding_closed', 'task_closed', 'task_deleted', 'task_cancelled'];
                 if (closedTypes.includes(msg.type)) {
-                    const closedTaskId = (msg as any).task_id || msg.task?.id || (msg as any).id;
-                    const msgWorkerId = (msg as any).worker_id || msg.task?.worker_id;
+                    const closedTaskId = (msg as any).task_id || (msg as any).id;
+                    const msgWorkerId = (msg as any).worker_id;
 
                     if (closedTaskId) {
                         console.log(`[useProWebSocket] Removing closed/assigned task ${closedTaskId} from live jobs feed.`);
                         setJobs((prev) => prev.filter((j) => Number(j.id) !== Number(closedTaskId)));
 
                         if (
-                            (msg.type === 'task_deleted' || msg.type === 'task_cancelled') &&
+                            (msg.type === 'task_deleted') &&
                             msgWorkerId &&
                             userId &&
                             String(msgWorkerId) === String(userId)

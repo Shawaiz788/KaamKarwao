@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
 import { LiveJob } from '@/hooks/useProWebSocket';
+import UserReviewsModal from '@/components/UserReviewsModal';
 
 interface ProActiveTaskModalProps {
     job: LiveJob | null;
@@ -43,6 +44,7 @@ export default function ProActiveTaskModal({
 }: ProActiveTaskModalProps) {
     const insets = useSafeAreaInsets();
     const [isCompleting, setIsCompleting] = useState(false);
+    const [customerReviewsVisible, setCustomerReviewsVisible] = useState(false);
 
     if (!job || !isVisible) return null;
 
@@ -139,7 +141,14 @@ export default function ProActiveTaskModal({
                     {/* Customer Profile Card */}
                     <View style={styles.customerCard}>
                         <Text style={styles.sectionHeading}>Customer Details</Text>
-                        <View style={styles.customerRow}>
+                        <Pressable 
+                            style={styles.customerRow}
+                            onPress={() => {
+                                if (job.customer_id) {
+                                    setCustomerReviewsVisible(true);
+                                }
+                            }}
+                        >
                             {job.customer_image ? (
                                 <Image source={{ uri: job.customer_image }} style={styles.customerAvatar} />
                             ) : (
@@ -147,7 +156,7 @@ export default function ProActiveTaskModal({
                                     <Text style={styles.avatarInitials}>
                                         {job.customer_name
                                             ? job.customer_name.slice(0, 2).toUpperCase()
-                                            : 'CU'}
+                                             : 'CU'}
                                     </Text>
                                 </View>
                             )}
@@ -160,6 +169,7 @@ export default function ProActiveTaskModal({
                                         {job.customer_rating ? job.customer_rating.toFixed(1) : '4.8'} Customer Rating
                                     </Text>
                                 </View>
+                                <Text style={styles.tapToViewReviewsHint}>Tap profile to see reviews</Text>
                                 <View style={styles.locationRow}>
                                     <Ionicons name="location-outline" size={14} color={Colors.neutral[400]} />
                                     <Text style={styles.locationText} numberOfLines={2}>
@@ -167,7 +177,7 @@ export default function ProActiveTaskModal({
                                     </Text>
                                 </View>
                             </View>
-                        </View>
+                        </Pressable>
 
                         {/* Direct Contact Buttons (Only active when NOT cancelled) */}
                         {!isCancelled && (
@@ -232,6 +242,15 @@ export default function ProActiveTaskModal({
                     )}
                 </ScrollView>
             </View>
+
+            {/* Customer Reviews Modal */}
+            <UserReviewsModal
+                isVisible={customerReviewsVisible}
+                onClose={() => setCustomerReviewsVisible(false)}
+                userId={job.customer_id}
+                userName={job.customer_name || 'Customer'}
+                role="customer"
+            />
         </Modal>
     );
 }
@@ -518,5 +537,12 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
         borderRadius: 12,
         marginTop: 8,
+    },
+    tapToViewReviewsHint: {
+        fontSize: 11,
+        color: Colors.pro.accent,
+        fontWeight: '600',
+        marginTop: 2,
+        marginBottom: 6,
     },
 });
