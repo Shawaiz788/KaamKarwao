@@ -330,6 +330,30 @@ export const getUserTasksFromBackend = async (userId: number): Promise<BackendTa
   }
 };
 
+export const getWorkerTasksFromBackend = async (workerId: number): Promise<BackendTask[]> => {
+  const url = `${API_URL}/app/task/worker/${workerId}/`;
+  const response = await fetchWithAuth(url);
+  const responseText = await response.text();
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      return [];
+    }
+    throw new Error(`Failed to fetch worker tasks. Status: ${response.status}. Response: ${responseText}`);
+  }
+
+  try {
+    const data = JSON.parse(responseText);
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.results)) return data.results;
+    if (data && typeof data === 'object' && (data as any).id) return [data as BackendTask];
+    return [];
+  } catch (e) {
+    console.error('[getWorkerTasksFromBackend] JSON parse error:', e);
+    return [];
+  }
+};
+
 export const getOpenTasksFromBackend = async (): Promise<BackendTask[]> => {
   //console.log(`[getOpenTasksFromBackend] Dispatching request to URL: ${API_URL}/app/task/open/`);
 

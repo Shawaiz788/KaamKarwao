@@ -16,6 +16,7 @@ import { useAuth } from '@/context/auth';
 import { Colors } from '@/constants/colors';
 import ProDrawerPanel from '@/components/pro/ProDrawerPanel';
 import { getProEarnings } from '@/services/proEarnings';
+import { getWorkerTasksFromBackend } from '@/services/task';
 import { ProEarnings } from '@/types';
 import styles from '@/styles/proDashboardView.styles';
 
@@ -98,20 +99,42 @@ export default function ProDashboardView() {
     const [isOnline, setIsOnline] = useState(false);
     const [earnings, setEarnings] = useState<ProEarnings | null>(null);
     const [loadingEarnings, setLoadingEarnings] = useState(true);
+    const [recentJobs, setRecentJobs] = useState<any[]>([]);
+    const [loadingJobs, setLoadingJobs] = useState(true);
 
     useEffect(() => {
-        const fetchEarnings = async () => {
+        const fetchDashboardData = async () => {
             if (!user?.id) return;
             try {
-                const data = await getProEarnings(user.id);
-                setEarnings(data);
-                // } catch (err) {
-                //     console.error('[ProDashboardView] Error fetching earnings:', err);
+                const [earningsRes, tasksRes] = await Promise.allSettled([
+                    getProEarnings(user.id),
+                    getWorkerTasksFromBackend(user.id),
+                ]);
+
+                if (earningsRes.status === 'fulfilled' && earningsRes.value) {
+                    setEarnings(earningsRes.value);
+                }
+
+                if (tasksRes.status === 'fulfilled' && Array.isArray(tasksRes.value)) {
+                    const mapped = tasksRes.value.slice(0, 5).map((t) => ({
+                        id: t.id?.toString() || Math.random().toString(),
+                        title: t.subject || 'Service Task',
+                        address: t.body || 'Specified Location',
+                        amount: `Rs. ${t.price ? t.price.toLocaleString() : '0'}`,
+                        icon: t.status_id === 4 ? 'checkmark-circle' : t.status_id === 5 ? 'close-circle' : 'briefcase',
+                        color: t.status_id === 4 ? '#22C55E' : t.status_id === 5 ? '#EF4444' : '#3B82F6',
+                        status: t.status_id === 4 ? 'Done' : t.status_id === 5 ? 'Cancelled' : 'Active',
+                    }));
+                    setRecentJobs(mapped);
+                }
+            } catch (err) {
+                console.error('[ProDashboardView] Error fetching dashboard data:', err);
             } finally {
                 setLoadingEarnings(false);
+                setLoadingJobs(false);
             }
         };
-        fetchEarnings();
+        fetchDashboardData();
     }, [user?.id]);
 
     const initials = user?.displayName
@@ -231,16 +254,20 @@ export default function ProDashboardView() {
                     </View>
 
                     <View style={styles.recentJobsCard}>
-                        {RECENT_JOBS.length === 0 ? (
+                        {loadingJobs ? (
+                            <View style={{ padding: 16, alignItems: 'center' }}>
+                                <Text style={{ color: Colors.neutral[400], fontSize: 13 }}>Loading recent jobs...</Text>
+                            </View>
+                        ) : recentJobs.length === 0 ? (
                             <View style={styles.emptyStateContainer}>
                                 <View style={styles.emptyIconCircle}>
                                     <Ionicons name="briefcase-outline" size={24} color={Colors.neutral[300]} />
                                 </View>
                                 <Text style={styles.emptyStateTitle}>No recent jobs</Text>
-                                <Text style={styles.emptyStateSub}>Completed jobs will appear here</Text>
+                                <Text style={styles.emptyStateSub}>Assigned/completed jobs will appear here</Text>
                             </View>
                         ) : (
-                            RECENT_JOBS.map((job, index) => (
+                            recentJobs.map((job, index) => (
                                 <View key={job.id}>
                                     <View style={styles.recentJobRow}>
                                         <View style={[styles.jobIconBox, { backgroundColor: `${job.color}18` }]}>
@@ -252,12 +279,14 @@ export default function ProDashboardView() {
                                         </View>
                                         <View style={styles.jobRight}>
                                             <Text style={styles.jobAmount}>{job.amount}</Text>
-                                            <View style={styles.doneBadge}>
-                                                <Text style={styles.doneBadgeText}>✓ Done</Text>
+                                            <View style={[styles.doneBadge, { backgroundColor: `${job.color}18` }]}>
+                                                <Text style={[styles.doneBadgeText, { color: job.color }]}>
+                                                    {job.status}
+                                                </Text>
                                             </View>
                                         </View>
                                     </View>
-                                    {index < RECENT_JOBS.length - 1 && <View style={styles.jobDivider} />}
+                                    {index < recentJobs.length - 1 && <View style={styles.jobDivider} />}
                                 </View>
                             ))
                         )}

@@ -96,6 +96,7 @@ interface JobDetailBottomSheetProps {
     onBidAccepted?: (job: LiveJob, amount: number) => void;
     activeBid?: ActiveBidState | null;
     onPlaceBid?: (job: LiveJob, amount: number) => void;
+    hasActiveTask?: boolean;
 }
 
 function SkeletonBox({
@@ -161,6 +162,7 @@ export default function JobDetailBottomSheet({
     onBidAccepted,
     activeBid,
     onPlaceBid,
+    hasActiveTask,
 }: JobDetailBottomSheetProps) {
     const { user } = useAuth();
     const { bids: wsBids, isBiddingClosed, placeBid: sendWsBid } = useBiddingWebSocket({
@@ -412,6 +414,14 @@ export default function JobDetailBottomSheet({
     ).current;
 
     const handlePlaceBid = () => {
+        if (hasActiveTask) {
+            Alert.alert(
+                'Active Job in Progress',
+                'You already have an active job in progress! Please complete your current job before bidding on another task.',
+                [{ text: 'OK' }]
+            );
+            return;
+        }
         if (isWaiting || !job) return;
         if (isBiddingClosed) {
             showToast('This task has already been assigned.');

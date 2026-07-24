@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth';
 import { Colors } from '@/constants/colors';
+import { getWorkerTasksFromBackend } from '@/services/task';
 import { useProWebSocket, LiveJob } from '@/hooks/useProWebSocket';
 import { sendQuickBidViaWebSocket, useBiddingWebSocket } from '@/hooks/useBiddingWebSocket';
 import JobCard from '@/components/pro/JobCard';
@@ -222,6 +223,31 @@ export default function ProLiveJobsView() {
 
     const { placeBid, removeBid, getActiveBid, activeJobIds } = useActiveBids(10);
 
+    // Sync active worker task from backend if not already set locally
+    useEffect(() => {
+        if (!user?.id || assignedJob) return;
+        getWorkerTasksFromBackend(user.id).then((tasks) => {
+            const activeBackendTask = tasks.find((t) => t.status_id !== 4 && t.status_id !== 5);
+            if (activeBackendTask) {
+                const restoredJob: LiveJob = {
+                    id: activeBackendTask.id!,
+                    title: activeBackendTask.subject || 'Active Task',
+                    description: activeBackendTask.body || '',
+                    category: 'Active Service',
+                    budget: activeBackendTask.price,
+                    location_name: 'Customer Location',
+                    customer_id: activeBackendTask.created_by,
+                    customer_name: (activeBackendTask as any).customer_name || 'Customer',
+                    created_at: activeBackendTask.created_at,
+                    payment_preference_id: activeBackendTask.payment_preference_id,
+                };
+                setAssignedJob(restoredJob);
+            }
+        }).catch((err) => {
+            console.warn('[ProLiveJobsView] Sync worker active task error:', err);
+        });
+    }, [user?.id, assignedJob, setAssignedJob]);
+
     // Filter available live jobs to exclude assigned job
     const displayJobs: LiveJob[] = (wsJobs.length > 0)
         ? wsJobs.filter((j) => !assignedJob || Number(j.id) !== Number(assignedJob.id))
@@ -337,6 +363,14 @@ export default function ProLiveJobsView() {
     }, [completedJobForReview, user?.id]);
 
     const handleQuickBid = (job: LiveJob, amount: number) => {
+        if (assignedJob) {
+            Alert.alert(
+                'Active Job in Progress',
+                'You already have an active job in progress! Please complete your current job before bidding on another task.',
+                [{ text: 'OK' }]
+            );
+            return;
+        }
         console.log(`[ProLiveJobsView] Quick bid: job=${job.id}, amount=${amount}`);
         placeBid(job.id, amount);
         if (user?.id && job.id) {
@@ -481,6 +515,7 @@ export default function ProLiveJobsView() {
                             onPress={handleOpenJobDetail}
                             onQuickBid={handleQuickBid}
                             activeBid={getActiveBid(job.id)}
+                            hasActiveTask={Boolean(assignedJob)}
                         />
                     ))}
                 </ScrollView>
@@ -492,7 +527,16 @@ export default function ProLiveJobsView() {
                 isVisible={sheetVisible}
                 onClose={() => setSheetVisible(false)}
                 activeBid={selectedJob ? getActiveBid(selectedJob.id) : null}
+                hasActiveTask={Boolean(assignedJob)}
                 onPlaceBid={(job, amount) => {
+                    if (assignedJob) {
+                        Alert.alert(
+                            'Active Job in Progress',
+                            'You already have an active job in progress! Please complete your current job before bidding on another task.',
+                            [{ text: 'OK' }]
+                        );
+                        return;
+                    }
                     placeBid(job.id, amount);
                 }}
                 onBidAccepted={(job, amount) => {

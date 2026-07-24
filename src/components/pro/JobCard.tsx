@@ -25,6 +25,7 @@ interface JobCardProps {
     onPress: (job: LiveJob) => void;
     onQuickBid: (job: LiveJob, amount: number) => void;
     activeBid?: ActiveBidState | null;
+    hasActiveTask?: boolean;
 }
 
 function SkeletonBox({
@@ -83,7 +84,7 @@ function showToast(message: string) {
     }
 }
 
-export default function JobCard({ job, onPress, onQuickBid, activeBid }: JobCardProps) {
+export default function JobCard({ job, onPress, onQuickBid, activeBid, hasActiveTask }: JobCardProps) {
     const progressAnim = useRef(new Animated.Value(1)).current;
     const [customerReviewsVisible, setCustomerReviewsVisible] = useState(false);
     const [countdown, setCountdown] = useState(10);
@@ -131,6 +132,14 @@ export default function JobCard({ job, onPress, onQuickBid, activeBid }: JobCard
     }, [activeBid]);
 
     const handleQuickBid = (amount: number) => {
+        if (hasActiveTask) {
+            Alert.alert(
+                'Active Job in Progress',
+                'You already have an active job in progress! Please complete your current job before bidding on another task.',
+                [{ text: 'OK' }]
+            );
+            return;
+        }
         if (isWaiting) return;
         onQuickBid(job, amount);
         showToast(`You have successfully placed a bid of Rs.${amount.toLocaleString()}.`);
